@@ -16,8 +16,7 @@ def inicializar_estado():
     inicializar_banco_clientes()
     inicializar_banco_tecnicos()
     inicializar_banco_produtos()
-    inicializar_banco_celulares()
-    inicializar_banco_servicos()
+
 
 # ======================================================================
 # CLIENTES

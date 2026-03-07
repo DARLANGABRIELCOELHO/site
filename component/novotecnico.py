@@ -1,3 +1,5 @@
+# Novo Técnico
+# interface para cadastro de novos técnicos (PyQt6)
 import sys
 import os
 from PyQt6.QtWidgets import (
