@@ -1,102 +1,105 @@
 #========================================================================================================================================
 # importações   
 #========================================================================================================================================
-from datetime import datetime
+from datetime import date
 import sqlite3
+
 #========================================================================================================================================
 # Configuração do banco
 #========================================================================================================================================
 DB_PATH = "ifix.db"
-# INICIALIZA O ESTADO DO BANCO DE DADOS
-def inicializar_estado():
-    """Garante que o banco de dados esteja pronto."""
-    inicializar_banco()
+
 # CONECTA AO BANCO DE DADOS SQLite
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+# INICIALIZA O ESTADO DO BANCO DE DADOS (CRIA TABELAS E DADOS INICIAIS)
+def inicializar_estado():
+    inicializar_banco()
 # ========================================================================================================================================
 # funções de dados da página tecnicos
 # ========================================================================================================================================
-
-# Dados iniciais de exemplo (serão usados na inicialização do banco)
-def tecnicos():
-    return [
-        {
-            "id": 1,
-            "nome": "Técnico A",
-            "telefone": "15555-5678",
-            "especialidade": "android",
-            "data_cadastro": "2023-02-01",
-            "ordens_servico": []
-        }
-    ]
-#-----------------------------------------------------------------------------------------------------------------------------------------
 # Chaves padronizadas para os campos do técnico (usadas como referência)
-#-----------------------------------------------------------------------------------------------------------------------------------------
 CAMPO_ID = "id"
 CAMPO_NOME = "nome"
 CAMPO_TELEFONE = "telefone"
 CAMPO_ESPECIALIDADE = "especialidade"
 CAMPO_DATA_CADASTRO = "data_cadastro"
-CAMPO_ORDENS_SERVICO = "ordens_servico"
+CAMPO_ORDENS_SERVICO = "ordens_servico"  # Não utilizado diretamente no banco
+# CRIA A TABELA TECNICOS E INSERE DADOS INICIAIS SE VAZIA
+def inicializar_banco():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Cria a tabela tecnicos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tecnicos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            telefone TEXT NOT NULL,
+            especialidade TEXT NOT NULL,
+            data_cadastro TEXT NOT NULL,
+            ordens_servico INTEGER DEFAULT 0
+        )
+    ''')
+    
+    # Verifica se a tabela está vazia e insere dados iniciais
+    cursor.execute("SELECT COUNT(*) FROM tecnicos")
+    if cursor.fetchone()[0] == 0:
+        dados_iniciais = [
+            ("Técnico A", "15555-5678", "android", "2023-02-01", 0)
+        ]
+        cursor.executemany('''
+            INSERT INTO tecnicos (nome, telefone, especialidade, data_cadastro, ordens_servico)
+            VALUES (?, ?, ?, ?, ?)
+        ''', dados_iniciais)
+    
+    conn.commit()
+    conn.close()
 
-# Banco de dados em memória (lista de dicionários)
-_tecnicos = []
-_banco_inicializado = False
 
-# ----------------------------------------------------------------------------------------------------------------------------------------
-# INICIALIZA O BANCO DE DADOS TABELA TECNICO
-# ----------------------------------------------------------------------------------------------------------------------------------------
-def inicializar_banco_tecnico():
-    global _tecnicos, _banco_inicializado
-    if not _banco_inicializado:
-        _tecnicos = tecnicos()  # carrega dados iniciais
-        _banco_inicializado = True
-
-# ----------------------------------------------------------------------------------------------------------------------------------------
-# RETORNA O PRÓXIMO ID TECNICO DISPONÍVEL
-# ----------------------------------------------------------------------------------------------------------------------------------------
-def proximo_id_tecnico():
-    if not _tecnicos:
-        return 1
-    return max(t[CAMPO_ID] for t in _tecnicos) + 1
 
 # ----------------------------------------------------------------------------------------------------------------------------------------
 # RETORNA UM TECNICO PELO ID
 # ----------------------------------------------------------------------------------------------------------------------------------------
 def obter_tecnico(tecnico_id):
-    for t in _tecnicos:
-        if t[CAMPO_ID] == tecnico_id:
-            return t
-    return None
+    conn = get_db_connection()
+    tecnico = conn.execute(
+        "SELECT id, nome, telefone, especialidade, data_cadastro, ordens_servico FROM tecnicos WHERE id = ?",
+        (tecnico_id,)
+    ).fetchone()
+    conn.close()
+    return dict(tecnico) if tecnico else None
 
 # ----------------------------------------------------------------------------------------------------------------------------------------
 # INSERE UM NOVO TECNICO
 # ----------------------------------------------------------------------------------------------------------------------------------------
 def inserir_tecnico(nome, telefone, especialidade):
-    novo_id = proximo_id_tecnico()
+    conn = get_db_connection()
     hoje = date.today().isoformat()  # formato YYYY-MM-DD
-    novo_tecnico = {
-        CAMPO_ID: novo_id,
-        CAMPO_NOME: nome,
-        CAMPO_TELEFONE: telefone,
-        CAMPO_ESPECIALIDADE: especialidade,
-        CAMPO_DATA_CADASTRO: hoje,
-        CAMPO_ORDENS_SERVICO: []
-    }
-    _tecnicos.append(novo_tecnico)
-    return novo_tecnico
+    cursor = conn.execute('''
+        INSERT INTO tecnicos (nome, telefone, especialidade, data_cadastro)
+        VALUES (?, ?, ?, ?)
+    ''', (nome, telefone, especialidade, hoje))
+    novo_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return obter_tecnico(novo_id)
 
 # ----------------------------------------------------------------------------------------------------------------------------------------
 # ATUALIZA AS INFORMAÇÕES DE UM TECNICO EXISTENTE
 # ----------------------------------------------------------------------------------------------------------------------------------------
 def atualizar_tecnico(tecnico_id, nome, telefone, especialidade):
-    tecnico = obter_tecnico(tecnico_id)
-    if tecnico:
-        tecnico[CAMPO_NOME] = nome
-        tecnico[CAMPO_TELEFONE] = telefone
-        tecnico[CAMPO_ESPECIALIDADE] = especialidade
-        return tecnico
-    return None
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE tecnicos
+        SET nome = ?, telefone = ?, especialidade = ?
+        WHERE id = ?
+    ''', (nome, telefone, especialidade, tecnico_id))
+    conn.commit()
+    conn.close()
+    
+    return obter_tecnico(tecnico_id)
