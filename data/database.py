@@ -182,17 +182,88 @@ def excluir_tecnico(tecnico_id):
 #========================================================================================================================================
 # funçoes de dados da pagina catalogo
 #========================================================================================================================================
-def produtos():
-    return [
-        {"id": 1, 
-        "name": "Produto A",
-        "categoria": "carregador",
-        "custos": 50.0,
-        "preco": 100.0,
-        "data_cadastro": "2023-03-01",
-        "estoque": 10,
-        "estoque_minimo": 5}
-        ]
+# -----------------------------------------------------------------------------
+# PRODUTOS
+# ---------------------------------------------------------------------
+# chave personalizada para o banco de dados produtos
+# PRODUTOS
+PRODUTO_ID = "id"
+PRODUTO_NOME = "nome"
+PRODUTO_CATEGORIA = "categoria"
+PRODUTO_CUSTOS = "custos"
+PRODUTO_PRECO = "preco"
+PRODUTO_DATA_CADASTRO = "data_cadastro"
+PRODUTO_ESTOQUE = "estoque"
+PRODUTO_ESTOQUE_MINIMO = "estoque_minimo"
+# inicializa o banco de dados para a tabela de produtos, criando a tabela se ela não existir e inserindo um produto de exemplo se a tabela estiver vazia
+def inicializar_banco_produtos():
+    with get_db_connection() as conn:
+        conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS produtos (
+                {PRODUTO_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
+                {PRODUTO_NOME} TEXT NOT NULL,
+                {PRODUTO_CATEGORIA} TEXT NOT NULL,
+                {PRODUTO_CUSTOS} REAL NOT NULL,
+                {PRODUTO_PRECO} REAL NOT NULL,
+                {PRODUTO_DATA_CADASTRO} TEXT NOT NULL,
+                {PRODUTO_ESTOQUE} INTEGER NOT NULL,
+                {PRODUTO_ESTOQUE_MINIMO} INTEGER NOT NULL
+            )
+        """)
+
+        cursor = conn.execute("SELECT COUNT(*) FROM produtos")
+        count = cursor.fetchone()[0]
+
+        if count == 0:
+            conn.execute(f"""
+                INSERT INTO produtos (
+                    {PRODUTO_NOME}, {PRODUTO_CATEGORIA}, {PRODUTO_CUSTOS},
+                    {PRODUTO_PRECO}, {PRODUTO_DATA_CADASTRO},
+                    {PRODUTO_ESTOQUE}, {PRODUTO_ESTOQUE_MINIMO}
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, ("Produto A", "carregador", 50.0, 100.0, "2023-03-01", 10, 5))
+
+        conn.commit()
+# obtém um produto do banco de dados com base no ID fornecido
+def obter_produto(produto_id):
+    with get_db_connection() as conn:
+        row = conn.execute(f"""
+            SELECT * FROM produtos WHERE {PRODUTO_ID} = ?
+        """, (produto_id,)).fetchone()
+    return dict(row) if row else None
+# insere um novo produto no banco de dados
+def inserir_produto(nome, categoria, custos, preco, data_cadastro, estoque, estoque_minimo):
+    with get_db_connection() as conn:
+        cursor = conn.execute(f"""
+            INSERT INTO produtos (
+                {PRODUTO_NOME}, {PRODUTO_CATEGORIA}, {PRODUTO_CUSTOS},
+                {PRODUTO_PRECO}, {PRODUTO_DATA_CADASTRO},
+                {PRODUTO_ESTOQUE}, {PRODUTO_ESTOQUE_MINIMO}
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (nome, categoria, custos, preco, data_cadastro, estoque, estoque_minimo))
+        conn.commit()
+        novo_id = cursor.lastrowid
+    return obter_produto(novo_id)
+# atualiza as informações de um produto existente no banco de dados
+def atualizar_produto(produto_id, nome, categoria, custos, preco, data_cadastro, estoque, estoque_minimo):
+    with get_db_connection() as conn:
+        conn.execute(f"""
+            UPDATE produtos SET
+                {PRODUTO_NOME} = ?, {PRODUTO_CATEGORIA} = ?, {PRODUTO_CUSTOS} = ?,
+                {PRODUTO_PRECO} = ?, {PRODUTO_DATA_CADASTRO} = ?, {PRODUTO_ESTOQUE} = ?,
+                {PRODUTO_ESTOQUE_MINIMO} = ?
+            WHERE {PRODUTO_ID} = ?
+        """, (nome, categoria, custos, preco, data_cadastro, estoque, estoque_minimo, produto_id))
+        conn.commit()
+    return obter_produto(produto_id)
+# exclui um produto do banco de dados com base no ID fornecido
+def excluir_produto(produto_id):
+    with get_db_connection() as conn:
+        conn.execute(f"DELETE FROM produtos WHERE {PRODUTO_ID} = ?", (produto_id,))
+        conn.commit()
+#-----------------------------------------------------------------------------
+# CELULARES
+#-----------------------------------------------------------------------------
 def celulares():
     return [
         {"id": 1, 
