@@ -1,0 +1,3 @@
+# laboratorio é a página onde os técnicos podem acessar informações detalhadas sobre os serviços em andamento, incluindo o status de cada serviço, as peças necessárias, os prazos estimados e as instruções de reparo. Ele também pode incluir uma seção para os técnicos registrarem notas e atualizações sobre o progresso dos serviços.
+# Ele pode ser usado para melhorar a comunicação entre os técnicos e a equipe de atendimento ao cliente, garantindo que todos estejam atualizados sobre o status dos serviços e possam fornecer informações precisas aos clientes.
+from data.database import ordens_de_servico

@@ -1,0 +1,2 @@
+# tecnicos é a página onde os técnicos cadastrados no sistema podem ser visualizados e gerenciados. Ele exibe uma lista de técnicos, incluindo detalhes como nome, número de contato, especialidade e data de cadastro. Os usuários também podem adicionar novos técnicos, editar informações existentes e visualizar o histórico de serviços relacionados a cada técnico.
+from data.database import tecnicos_data

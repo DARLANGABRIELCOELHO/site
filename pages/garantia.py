@@ -1,0 +1,2 @@
+# Garantia é a página onde os usuários podem gerenciar as garantias dos serviços realizados. Ele exibe uma lista de serviços com garantia ativa, incluindo detalhes como o cliente, o serviço realizado, a data de início da garantia e a data de término. Os usuários também podem registrar reclamações de garantia, acompanhar o status das reclamações e resolver problemas relacionados à garantia.
+from data.database import vendas, ordens_de_servico
