@@ -1,50 +1,37 @@
-# este componente é para adicionar um novo técnico  
-# interface para adicionar um novo técnico  
-#========================================================================================================================================
-# importações   
-#========================================================================================================================================
 import sys
 import os
-from datetime import datetime
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
-    QSpacerItem, QSizePolicy
+    QLabel, QLineEdit, QPushButton, QFrame,
+    QSpacerItem, QSizePolicy, QMessageBox
 )
-# ADICIONA O DIRETÓRIO PAI AO SYS.PATH PARA ENCONTRAR O PACOTE 'data'
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import data.database as db 
-#========================================================================================================================================
-#janela cadastro novo tecnico
-#========================================================================================================================================
+import data.database as db
+
+
 class NovoTecnicoWindow(QWidget):
     def __init__(self):
         super().__init__()
-        # Inicializa o banco de dados (descomente se necessário)
         db.inicializar_estado()
         self.initUI()
 
     def initUI(self):
-        # Configuração da Janela
         self.setWindowTitle("Novo Técnico")
-        self.setFixedSize(650, 680)  # Proporção ajustada para o novo design
+        self.setFixedSize(500, 500)
 
-        # Layout principal com margens
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(30, 30, 30, 30)
         main_layout.setSpacing(15)
 
-        # Cabeçalho
         lbl_titulo = QLabel("👤 NOVO TÉCNICO")
         lbl_titulo.setObjectName("title")
         main_layout.addWidget(lbl_titulo)
         main_layout.addSpacing(10)
 
-        # Grid Layout
         grid = QGridLayout()
         grid.setSpacing(15)
 
-        # Linha 1: Nome e Telefone
         grid.addWidget(QLabel("Nome *"), 0, 0)
         self.edit_nome = QLineEdit()
         grid.addWidget(self.edit_nome, 1, 0)
@@ -53,26 +40,13 @@ class NovoTecnicoWindow(QWidget):
         self.edit_telefone = QLineEdit()
         grid.addWidget(self.edit_telefone, 1, 1)
 
-        # Linha 2: Documento
-        grid.addWidget(QLabel("CPF/CNPJ"), 2, 0, 1, 2)
-        self.edit_documento = QLineEdit()
-        grid.addWidget(self.edit_documento, 3, 0, 1, 2)
-
-        # Linha 3: Endereço
-        grid.addWidget(QLabel("Endereço"), 4, 0, 1, 2)
-        self.edit_endereco = QLineEdit()
-        grid.addWidget(self.edit_endereco, 5, 0, 1, 2)
-
-        # Linha 4: Observações
-        grid.addWidget(QLabel("Observações"), 6, 0, 1, 2)
-        self.edit_observacoes = QTextEdit()
-        self.edit_observacoes.setMaximumHeight(120)
-        grid.addWidget(self.edit_observacoes, 7, 0, 1, 2)
+        grid.addWidget(QLabel("Especialidade *"), 2, 0, 1, 2)
+        self.edit_especialidade = QLineEdit()
+        grid.addWidget(self.edit_especialidade, 3, 0, 1, 2)
 
         main_layout.addLayout(grid)
         main_layout.addSpacing(15)
 
-        # Linha separadora laranja
         linha = QFrame()
         linha.setFrameShape(QFrame.Shape.HLine)
         linha.setObjectName("linha_laranja")
@@ -80,7 +54,6 @@ class NovoTecnicoWindow(QWidget):
 
         main_layout.addSpacing(15)
 
-        # Botões
         botoes_layout = QHBoxLayout()
         spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         botoes_layout.addItem(spacer)
@@ -94,45 +67,34 @@ class NovoTecnicoWindow(QWidget):
         botoes_layout.addWidget(self.btn_cancelar)
         botoes_layout.addWidget(self.btn_cadastrar)
 
-        # Conexões (descomente e implemente o método salvar_cliente quando necessário)
-        self.btn_cadastrar.clicked.connect(self.salvar_cliente)
+        self.btn_cadastrar.clicked.connect(self.salvar_tecnico)
         self.btn_cancelar.clicked.connect(self.close)
 
         main_layout.addLayout(botoes_layout)
         self.setLayout(main_layout)
 
         self.aplicar_estilos()
-#========================================================================================================================================
-# ESTILOS
-#========================================================================================================================================
+
     def aplicar_estilos(self):
-        """Aplica a paleta hexadecimal e tipografia usando Qt StyleSheet (QSS)"""
         estilo = """
-        /* Fundo da Janela e Tipografia Global */
         QWidget {
             background-color: #0F172A;
             font-family: 'Poppins', 'Montserrat', sans-serif;
             color: #FFFFFF;
         }
 
-        /* Estilo do Título Principal */
         QLabel#title {
             font-size: 20px;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
-        /* Estilo das Labels descritivas */
         QLabel {
             font-size: 12px;
             font-weight: 600;
             color: #64748B;
-            letter-spacing: 0.5px;
         }
 
-        /* Campos de Entrada (Inputs) */
-        QLineEdit, QTextEdit {
+        QLineEdit {
             background-color: #0B1120;
             border: 1px solid #1E293B;
             border-radius: 6px;
@@ -142,19 +104,16 @@ class NovoTecnicoWindow(QWidget):
             selection-background-color: #F26522;
         }
 
-        /* Destaque ao clicar/focar no input */
-        QLineEdit:focus, QTextEdit:focus {
+        QLineEdit:focus {
             border: 1px solid #F26522;
         }
 
-        /* Linha laranja acima dos botões */
         QFrame#linha_laranja {
             background-color: #F26522;
             max-height: 1px;
             border: none;
         }
 
-        /* Base para os botões */
         QPushButton {
             font-size: 14px;
             font-weight: 600;
@@ -162,47 +121,63 @@ class NovoTecnicoWindow(QWidget):
             padding: 10px 24px;
         }
 
-        /* Botão Cadastrar (Laranja) */
         QPushButton#btnCadastrar {
             background-color: #F26522;
             color: #FFFFFF;
             border: none;
         }
+
         QPushButton#btnCadastrar:hover {
             background-color: #E05412;
         }
 
-        /* Botão Cancelar (Outline) */
         QPushButton#btnCancelar {
             background-color: transparent;
             color: #FFFFFF;
             border: 1px solid #64748B;
         }
+
         QPushButton#btnCancelar:hover {
             background-color: #1E293B;
         }
         """
         self.setStyleSheet(estilo)
 #========================================================================================================================================
-# SALVAR CLIENTE
+    # Exemplo de implementação do método salvar_tecnico
 #========================================================================================================================================
-    def salvar_cliente(self):
-        """Coleta os dados dos campos e salva no banco de dados"""
+
+    def salvar_tecnico(self):
         nome = self.edit_nome.text().strip()
         telefone = self.edit_telefone.text().strip()
-        documento = self.edit_documento.text().strip()
-        endereco = self.edit_endereco.text().strip()
-        observacoes = self.edit_observacoes.toPlainText().strip()
+        especialidade = self.edit_especialidade.text().strip()
 
-        # Validação básica: Nome e Telefone são obrigatórios
-        if not nome or not telefone:
-            # Aqui você pode adicionar um QMessageBox para mostrar o erro
-            print("Erro: Nome e Telefone são obrigatórios.")
+        if not nome or not telefone or not especialidade:
+            QMessageBox.warning(
+                self,
+                "Atenção",
+                "Nome, Telefone e Especialidade são obrigatórios."
+            )
             return
 
-        # Cria o dicionário com os dados do cliente
-        novo_cliente = {
-            "nome": nome,
-            "telefone": telefone,
-            "documento": documento,
-            
+        try:
+            tecnico = db.inserir_tecnico(nome, telefone, especialidade)
+            QMessageBox.information(
+                self,
+                "Sucesso",
+                f"Técnico cadastrado com sucesso!\nID: {tecnico['id']}"
+            )
+            self.close()
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erro ao salvar",
+                f"Não foi possível salvar o técnico.\n\n{str(e)}"
+            )
+#========================================================================================================================================
+# MAIN
+#========================================================================================================================================
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    janela = NovoTecnicoWindow()
+    janela.show()
+    sys.exit(app.exec())

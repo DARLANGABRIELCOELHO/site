@@ -182,7 +182,7 @@ class NovoClienteWindow(QWidget):
         """
         self.setStyleSheet(estilo)
 #========================================================================================================================================
-    # Exemplo de implementação do método salvar_cliente (descomente e ajuste conforme necessidade)
+    # Exemplo de implementação do método salvar_cliente
 #========================================================================================================================================
     def salvar_cliente(self):
         nome = self.edit_nome.text()

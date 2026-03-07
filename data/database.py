@@ -1,10 +1,11 @@
 from datetime import datetime, date
 import sqlite3
-
+import os
 # ======================================================================
 # CONFIGURAÇÃO DO BANCO
 # ======================================================================
-DB_PATH = "ifix.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "ifix.db")
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
@@ -14,11 +15,14 @@ def get_db_connection():
 def inicializar_estado():
     inicializar_banco_clientes()
     inicializar_banco_tecnicos()
+    inicializar_banco_produtos()
+    inicializar_banco_celulares()
+    inicializar_banco_servicos()
 
 # ======================================================================
 # CLIENTES
 # ======================================================================
-
+# Chaves padronizadas para os campos do cliente (usadas como referência)
 CLIENTE_ID = "id"
 CLIENTE_NOME = "nome"
 CLIENTE_TELEFONE = "telefone"
@@ -27,7 +31,7 @@ CLIENTE_ENDERECO = "endereco"
 CLIENTE_OBSERVACOES = "observacoes"
 CLIENTE_DATA_CADASTRO = "data_cadastro"
 CLIENTE_ORDENS_SERVICO = "ordens_servico"
-
+# CRIA A TABELA CLIENTES E INSERE DADOS INICIAIS SE VAZIA
 def inicializar_banco_clientes():
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -57,21 +61,21 @@ def inicializar_banco_clientes():
                 "01/01/2023"
             ))
             conn.commit()
-
+# Função para obter o próximo ID disponível para um novo cliente
 def proximo_id_cliente():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT MAX(id) FROM clientes")
         max_id = cursor.fetchone()[0]
         return (max_id or 0) + 1
-
+# Função para obter o próximo ID disponível para um novo técnico
 def obter_cliente(cliente_id):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM clientes WHERE id = ?", (cliente_id,))
         row = cursor.fetchone()
     return dict(row) if row else None
-
+# insere um novo cliente no banco de dados
 def inserir_cliente(nome, telefone, documento, endereco, observacoes):
     data_cadastro = datetime.now().strftime("%d/%m/%Y")
     with get_db_connection() as conn:
@@ -82,7 +86,7 @@ def inserir_cliente(nome, telefone, documento, endereco, observacoes):
         """, (nome, telefone, documento, endereco, observacoes, data_cadastro))
         conn.commit()
         return cursor.lastrowid
-
+# atualiza as informações de um cliente existente no banco de dados
 def atualizar_cliente(cliente_id, nome, telefone, documento, endereco, observacoes):
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -93,7 +97,7 @@ def atualizar_cliente(cliente_id, nome, telefone, documento, endereco, observaco
         """, (nome, telefone, documento, endereco, observacoes, cliente_id))
         conn.commit()
     return obter_cliente(cliente_id)
-
+# exclui um cliente do banco de dados com base no ID fornecido
 def excluir_cliente(cliente_id):
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -103,14 +107,14 @@ def excluir_cliente(cliente_id):
 # ======================================================================
 # TÉCNICOS
 # ======================================================================
-
+# Chaves padronizadas para os campos do técnico (usadas como referência)
 TECNICO_ID = "id"
 TECNICO_NOME = "nome"
 TECNICO_TELEFONE = "telefone"
 TECNICO_ESPECIALIDADE = "especialidade"
 TECNICO_DATA_CADASTRO = "data_cadastro"
 TECNICO_ORDENS_SERVICO = "ordens_servico"
-
+# CRIA A TABELA TECNICOS E INSERE DADOS INICIAIS SE VAZIA
 def inicializar_banco_tecnicos():
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -137,7 +141,7 @@ def inicializar_banco_tecnicos():
             """, dados_iniciais)
 
         conn.commit()
-
+# Função para obter o próximo ID disponível para um novo técnico
 def obter_tecnico(tecnico_id):
     with get_db_connection() as conn:
         tecnico = conn.execute("""
@@ -147,7 +151,7 @@ def obter_tecnico(tecnico_id):
         """, (tecnico_id,)).fetchone()
 
     return dict(tecnico) if tecnico else None
-
+# insere um novo técnico no banco de dados
 def inserir_tecnico(nome, telefone, especialidade):
     hoje = date.today().isoformat()
     with get_db_connection() as conn:
@@ -159,7 +163,7 @@ def inserir_tecnico(nome, telefone, especialidade):
         novo_id = cursor.lastrowid
 
     return obter_tecnico(novo_id)
-
+# atualiza as informações de um técnico existente no banco de dados
 def atualizar_tecnico(tecnico_id, nome, telefone, especialidade):
     with get_db_connection() as conn:
         conn.execute("""
@@ -170,7 +174,7 @@ def atualizar_tecnico(tecnico_id, nome, telefone, especialidade):
         conn.commit()
 
     return obter_tecnico(tecnico_id)
-
+# exclui um técnico do banco de dados com base no ID fornecido
 def excluir_tecnico(tecnico_id):
     with get_db_connection() as conn:
         conn.execute("DELETE FROM tecnicos WHERE id = ?", (tecnico_id,))
