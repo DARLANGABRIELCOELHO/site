@@ -1,17 +1,101 @@
-# funçoes de dados da pagina clientes
-def clientes():
-    
-    return [
-        {"id": 1, 
-        "name": "Cliente A",
-        "numero": "15555-1234",
-        "documento": "123.456.789-00",
-        "endereco": "Rua A, 123",
-        "observacao": "Cliente VIP",
-        "data_cadastro": "2023-01-01",
-        "ordem_servico": []},
-        ]
+
+#========================================================================================================================================
+# importações   
+#========================================================================================================================================
+from datetime import datetime
+import sqlite3
+#========================================================================================================================================
+# Configuração do banco
+#========================================================================================================================================
+DB_PATH = "ifix.db"
+# INICIALIZA O ESTADO DO BANCO DE DADOS
+def inicializar_estado():
+    """Garante que o banco de dados esteja pronto."""
+    inicializar_banco()
+# CONECTA AO BANCO DE DADOS SQLite
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+#========================================================================================================================================
+# funcoes de dados da pagina clientes
+#========================================================================================================================================
+# Chaves padronizadas para os campos do cliente (usadas como referência)
+CAMPO_ID = "id"
+CAMPO_NOME = "nome"
+CAMPO_TELEFONE = "telefone"
+CAMPO_DOCUMENTO = "documento"
+CAMPO_ENDERECO = "endereco"
+CAMPO_OBSERVACOES = "observacoes"
+CAMPO_DATA_CADASTRO = "data_cadastro"
+CAMPO_ORDENS_SERVICO = "ordens_servico"  # Não utilizado diretamente no banco
+
+# INICIALIZA O BANCO DE DADOS TABELA CLIENTE
+def inicializar_banco():
+    """Cria a tabela e insere um exemplo se estiver vazia."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS clientes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                telefone TEXT,
+                documento TEXT,
+                endereco TEXT,
+                observacoes TEXT,
+                data_cadastro TEXT
+            )
+        """)
+        cursor.execute("SELECT COUNT(*) FROM clientes")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+                INSERT INTO clientes (nome, telefone, documento, endereco, observacoes, data_cadastro)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, ("Cliente A", "15555-1234", "123.456.789-00", "Rua A, 123", "Cliente VIP", "01/01/2023"))
+            conn.commit()
+# RETORNA O PRÓXIMO ID CLIENTE DISPONÍVEL
+def proximo_id_cliente():
+    """Retorna o próximo ID disponível (caso necessário)."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(id) FROM clientes")
+        max_id = cursor.fetchone()[0]
+        return (max_id or 0) + 1
+# RETORNA UM CLIENTE PELO ID
+def obter_cliente(cliente_id):
+    """Retorna um cliente pelo ID."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM clientes WHERE id = ?", (cliente_id,))
+        row = cursor.fetchone()
+    return dict(row) if row else None
+# INSERE UM NOVO CLIENTE
+def inserir_cliente(nome, telefone, documento, endereco, observacoes):
+    """Insere um novo cliente no banco de dados."""
+    data_cadastro = datetime.now().strftime("%d/%m/%Y")
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO clientes (nome, telefone, documento, endereco, observacoes, data_cadastro)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (nome, telefone, documento, endereco, observacoes, data_cadastro))
+        conn.commit()
+        return cursor.lastrowid
+# ATUALIZA AS INFORMAÇÕES DE UM CLIENTE EXISTENTE
+def atualizar_cliente(cliente_id, nome, telefone, documento, endereco, observacoes):
+    """Atualiza as informações de um cliente existente."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE clientes
+            SET nome = ?, telefone = ?, documento = ?, endereco = ?, observacoes = ?
+            WHERE id = ?
+        """, (nome, telefone, documento, endereco, observacoes, cliente_id))
+        conn.commit()
+# APAGAR CLIENTE EXISTENTE 
+#========================================================================================================================================
 # funçoes de dados da pagina tecnicos
+#========================================================================================================================================
 def tecnicos():
     return [
         {"id": 1, 
@@ -21,7 +105,9 @@ def tecnicos():
         "data_cadastro": "2023-02-01",
         "ordem_servico": []},
         ]
+#========================================================================================================================================
 # funçoes de dados da pagina catalogo
+#========================================================================================================================================
 def produtos():
     return [
         {"id": 1, 
@@ -60,7 +146,9 @@ def servicos():
         "observacao": "Garantia de 3 meses",
         "data_cadastro": "2023-05-01"}
         ]
+#========================================================================================================================================
 # funçoes de dados da pagina vendas
+#========================================================================================================================================
 def vendas():
     return [
         {"id": 1, 
@@ -76,7 +164,9 @@ def vendas():
         "garantia": "90 dias",
         "valor_total": 500.0}
         ]
+#========================================================================================================================================
 # funçoes de dados da pagina laboratorio/garantia
+#========================================================================================================================================
 def ordens_de_servico():
     return [
         {

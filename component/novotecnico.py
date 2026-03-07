@@ -1,5 +1,8 @@
-# novocliente.py
-# Interface gráfica para cadastro de novo cliente (PyQt6)
+# este componente é para adicionar um novo técnico  
+# interface para adicionar um novo técnico  
+#========================================================================================================================================
+# importações   
+#========================================================================================================================================
 import sys
 import os
 from datetime import datetime
@@ -8,13 +11,13 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy
 )
-# Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
+# ADICIONA O DIRETÓRIO PAI AO SYS.PATH PARA ENCONTRAR O PACOTE 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import data.database as db
+import data.database as db 
 #========================================================================================================================================
-# JANELA DE CADASTRO DE NOVO CLIENTE
+#janela cadastro novo tecnico
 #========================================================================================================================================
-class NovoClienteWindow(QWidget):
+class NovoTecnicoWindow(QWidget):
     def __init__(self):
         super().__init__()
         # Inicializa o banco de dados (descomente se necessário)
@@ -23,7 +26,7 @@ class NovoClienteWindow(QWidget):
 
     def initUI(self):
         # Configuração da Janela
-        self.setWindowTitle("Novo Cliente")
+        self.setWindowTitle("Novo Técnico")
         self.setFixedSize(650, 680)  # Proporção ajustada para o novo design
 
         # Layout principal com margens
@@ -32,7 +35,7 @@ class NovoClienteWindow(QWidget):
         main_layout.setSpacing(15)
 
         # Cabeçalho
-        lbl_titulo = QLabel("👤 NOVO CLIENTE")
+        lbl_titulo = QLabel("👤 NOVO TÉCNICO")
         lbl_titulo.setObjectName("title")
         main_layout.addWidget(lbl_titulo)
         main_layout.addSpacing(10)
@@ -177,28 +180,29 @@ class NovoClienteWindow(QWidget):
         }
         QPushButton#btnCancelar:hover {
             background-color: #1E293B;
-            border: 1px solid #FFFFFF;
         }
         """
         self.setStyleSheet(estilo)
 #========================================================================================================================================
-    # Exemplo de implementação do método salvar_cliente (descomente e ajuste conforme necessidade)
+# SALVAR CLIENTE
 #========================================================================================================================================
     def salvar_cliente(self):
-        nome = self.edit_nome.text()
-        telefone = self.edit_telefone.text()
-        documento = self.edit_documento.text()
-        endereco = self.edit_endereco.text()
-        observacoes = self.edit_observacoes.toPlainText()
-        # Aqui você pode chamar funções do módulo database para inserir no banco
-        db.inserir_cliente(nome, telefone, documento, endereco, observacoes)
-        self.close()
+        """Coleta os dados dos campos e salva no banco de dados"""
+        nome = self.edit_nome.text().strip()
+        telefone = self.edit_telefone.text().strip()
+        documento = self.edit_documento.text().strip()
+        endereco = self.edit_endereco.text().strip()
+        observacoes = self.edit_observacoes.toPlainText().strip()
 
-#========================================================================================================================================
-# MAIN
-#========================================================================================================================================
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    janela = NovoClienteWindow()
-    janela.show()
-    sys.exit(app.exec())
+        # Validação básica: Nome e Telefone são obrigatórios
+        if not nome or not telefone:
+            # Aqui você pode adicionar um QMessageBox para mostrar o erro
+            print("Erro: Nome e Telefone são obrigatórios.")
+            return
+
+        # Cria o dicionário com os dados do cliente
+        novo_cliente = {
+            "nome": nome,
+            "telefone": telefone,
+            "documento": documento,
+            
