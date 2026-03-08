@@ -1,16 +1,36 @@
 from datetime import datetime, date, timedelta
 import sqlite3
 import os
+import sys
+import shutil
+from pathlib import Path
 
 # ======================================================================
-# CONFIGURAÇÃO DO BANCO
+# CONFIGURAÇÃO DO BANCO & RECURSOS PYINSTALLER
 # ======================================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "ifix.db")
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
+def get_writable_db_path():
+    app_dir = Path(os.getenv("LOCALAPPDATA", Path.home())) / "iFix"
+    app_dir.mkdir(parents=True, exist_ok=True)
+    return app_dir / "ifix.db"
+
+def prepare_database():
+    destino = get_writable_db_path()
+    if not destino.exists():
+        origem = resource_path(os.path.join("data", "ifix.db"))
+        if os.path.exists(origem):
+            shutil.copy2(origem, destino)
+    return str(destino)
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    db_path = prepare_database()
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
