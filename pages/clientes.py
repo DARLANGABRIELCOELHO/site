@@ -3,9 +3,10 @@ import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QPushButton, QFrame,
-    QSpacerItem, QSizePolicy, QScrollArea, QMessageBox
+    QSpacerItem, QSizePolicy, QScrollArea, QMessageBox, QMenu
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
@@ -14,7 +15,7 @@ from component.novocliente import NovoClienteWindow
 
 class ClienteCRMCard(QFrame):
     """Card individual de um cliente."""
-    def __init__(self, cliente: dict, on_excluir):
+    def __init__(self, cliente: dict, on_vizualizar, on_editar, on_excluir):
         super().__init__()
         self.cliente = cliente
         self.setObjectName("card_cliente")
@@ -44,11 +45,33 @@ class ClienteCRMCard(QFrame):
 
         top_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
-        btn_excluir = QPushButton("🗑️")
-        btn_excluir.setObjectName("btn_acao_pequeno")
-        btn_excluir.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_excluir.clicked.connect(lambda: on_excluir(cliente["id"]))
-        top_layout.addWidget(btn_excluir)
+        btn_menu = QPushButton("⋮")
+        btn_menu.setObjectName("btn_acao_pequeno")
+        btn_menu.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        def _abrir_menu():
+            menu = QMenu(btn_menu)
+            menu.setStyleSheet("""
+                QMenu { background-color: #1E293B; border: 1px solid #334155; border-radius: 6px; padding: 4px; }
+                QMenu::item { color: #FFFFFF; padding: 8px 20px; font-size: 13px; }
+                QMenu::item:selected { background-color: #334155; border-radius: 4px; }
+                QMenu::separator { height: 1px; background: #334155; margin: 4px 8px; }
+            """)
+            acao_visualizar = QAction("👁  Visualizar dados", menu)
+            acao_visualizar.triggered.connect(lambda: on_vizualizar(cliente))
+            menu.addAction(acao_visualizar)
+            menu.addSeparator()
+            acao_editar = QAction("✏  Editar cliente", menu)
+            acao_editar.triggered.connect(lambda: on_editar(cliente))
+            menu.addAction(acao_editar)
+            menu.addSeparator()
+            acao_excluir = QAction("🗑  Excluir", menu)
+            acao_excluir.triggered.connect(lambda: on_excluir(cliente["id"]))
+            menu.addAction(acao_excluir)
+            menu.exec(btn_menu.mapToGlobal(btn_menu.rect().bottomLeft()))
+
+        btn_menu.clicked.connect(_abrir_menu)
+        top_layout.addWidget(btn_menu)
 
         layout.addLayout(top_layout)
 
@@ -163,7 +186,7 @@ class ClientesScreen(QWidget):
 
         row, col = 0, 0
         for cliente in clientes:
-            card = ClienteCRMCard(cliente, self._excluir_cliente)
+            card = ClienteCRMCard(cliente, self._vizualizar_cliente, self._editar_cliente, self._excluir_cliente)
             self.grid_cards.addWidget(card, row, col)
             col += 1
             if col > 2:
@@ -184,6 +207,17 @@ class ClientesScreen(QWidget):
         self._janela_novo_cliente.btn_cadastrar.clicked.connect(salvar_e_atualizar)
         self._janela_novo_cliente.show()
 
+    def _vizualizar_cliente(self, cliente: dict):
+        from component.vizualizarcliente import ClienteDadosDialog
+        dlg = ClienteDadosDialog(cliente)
+        dlg.exec()
+
+    def _editar_cliente(self, cliente: dict):
+        from component.vizualizarcliente import EditarClienteDialog
+        dlg = EditarClienteDialog(cliente)
+        if dlg.exec() == EditarClienteDialog.DialogCode.Accepted:
+            self._carregar_clientes(filtro=self.edit_busca.text())
+
     def _excluir_cliente(self, cliente_id: int):
         resposta = QMessageBox.question(
             self,
@@ -192,7 +226,13 @@ class ClientesScreen(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if resposta == QMessageBox.StandardButton.Yes:
-            db.excluir_cliente(cliente_id)
+            sucesso = db.excluir_cliente(cliente_id)
+            if not sucesso:
+                QMessageBox.warning(
+                    self,
+                    "Atenção",
+                    "Não é possível excluir este cliente pois ele possui Ordens de Serviço vinculadas."
+                )
             self._carregar_clientes(filtro=self.edit_busca.text())
 
     def aplicar_estilos(self):

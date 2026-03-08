@@ -251,7 +251,13 @@ class TecnicosScreen(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if resp == QMessageBox.StandardButton.Yes:
-            db.excluir_tecnico(tecnico_id)
+            sucesso = db.excluir_tecnico(tecnico_id)
+            if not sucesso:
+                QMessageBox.warning(
+                    self,
+                    "Atenção",
+                    "Não é possível excluir este técnico pois ele possui Ordens de Serviço vinculadas."
+                )
             self._carregar_tecnicos()
 
     # ─ Estilos ────────────────────────────────

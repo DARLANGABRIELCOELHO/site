@@ -90,7 +90,7 @@ ESTAGIO_LABELS = {
 
 class OSCard(QFrame):
     def __init__(self, ordem: dict, on_status_changed, on_checkout,
-                 on_imprimir, on_whatsapp, on_editar):
+                 on_imprimir, on_whatsapp, on_editar, on_cancelar, on_apagar):
         super().__init__()
         self._ordem = ordem
         self._on_status_changed = on_status_changed
@@ -98,6 +98,8 @@ class OSCard(QFrame):
         self._on_imprimir = on_imprimir
         self._on_whatsapp = on_whatsapp
         self._on_editar = on_editar
+        self._on_cancelar = on_cancelar
+        self._on_apagar = on_apagar
 
         self.setObjectName("os_card")
         self.setFixedWidth(340)
@@ -230,18 +232,25 @@ class OSCard(QFrame):
         menu = QMenu(self)
         menu.setObjectName("menu_card")
 
-        acao_imprimir = QAction("🖨  Imprimir", self)
-        acao_whatsapp = QAction("💬  Chamar no WhatsApp", self)
-        acao_editar   = QAction("✏  Editar", self)
+        acao_imprimir  = QAction("🖨  Imprimir", self)
+        acao_whatsapp  = QAction("💬  Chamar no WhatsApp", self)
+        acao_editar    = QAction("✏  Editar", self)
+        acao_cancelar  = QAction("✕  Cancelar OS", self)
+        acao_apagar    = QAction("🗑  Apagar OS", self)
 
         acao_imprimir.triggered.connect(lambda: self._on_imprimir(self._ordem))
         acao_whatsapp.triggered.connect(lambda: self._on_whatsapp(self._ordem))
         acao_editar.triggered.connect(lambda: self._on_editar(self._ordem))
+        acao_cancelar.triggered.connect(lambda: self._on_cancelar(self._ordem))
+        acao_apagar.triggered.connect(lambda: self._on_apagar(self._ordem))
 
         menu.addAction(acao_imprimir)
         menu.addAction(acao_whatsapp)
         menu.addSeparator()
         menu.addAction(acao_editar)
+        menu.addAction(acao_cancelar)
+        menu.addSeparator()
+        menu.addAction(acao_apagar)
 
         menu.exec(self.btn_menu.mapToGlobal(self.btn_menu.rect().bottomLeft()))
 
@@ -352,6 +361,8 @@ class LaboratorioScreen(QWidget):
                 self._imprimir_os,
                 self._chamar_whatsapp,
                 self._editar_os,
+                self._cancelar_os,
+                self._apagar_os,
             )
             self.grid_cards.addWidget(card, row, col)
             col += 1
@@ -401,6 +412,29 @@ class LaboratorioScreen(QWidget):
             janela.exec()
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Falha ao abrir edição da OS:\n{e}")
+
+    def _cancelar_os(self, ordem: dict):
+        try:
+            from component.novocancelamento import NovoCancelamentoWindow
+            dlg = NovoCancelamentoWindow(ordem)
+            dlg.accepted.connect(self._carregar_ordens)
+            dlg.exec()
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Falha ao abrir cancelamento:\n{e}")
+
+    def _apagar_os(self, ordem: dict):
+        resp = QMessageBox.question(
+            self,
+            "Apagar OS",
+            f"Deseja apagar permanentemente a OS #{ordem['id']}?\n\nEsta ação não pode ser desfeita.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if resp == QMessageBox.StandardButton.Yes:
+            try:
+                db.excluir_ordem_servico(ordem["id"])
+                self._carregar_ordens()
+            except Exception as e:
+                QMessageBox.critical(self, "Erro", f"Falha ao apagar OS:\n{e}")
 
     # ─ Estilos ─────────────────────────────────
 

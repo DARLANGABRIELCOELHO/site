@@ -223,10 +223,14 @@ def atualizar_cliente(cliente_id, nome, telefone, documento, endereco, observaco
     return obter_cliente(cliente_id)
 # exclui um cliente do banco de dados com base no ID fornecido
 def excluir_cliente(cliente_id):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM clientes WHERE id = ?", (cliente_id,))
-        conn.commit()
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM clientes WHERE id = ?", (cliente_id,))
+            conn.commit()
+            return True
+    except sqlite3.IntegrityError:
+        return False
 
 # ======================================================================
 # TÉCNICOS
@@ -541,6 +545,20 @@ def excluir_celular(celular_id):
     with get_db_connection() as conn:
         conn.execute(f"DELETE FROM celulares WHERE {CELULAR_ID} = ?", (celular_id,))
         conn.commit()
+
+
+def listar_celulares(filtro: str = "") -> list:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if filtro:
+            cursor.execute(
+                "SELECT * FROM celulares WHERE modelo LIKE ? OR marca LIKE ? ORDER BY modelo",
+                (f"%{filtro}%", f"%{filtro}%")
+            )
+        else:
+            cursor.execute("SELECT * FROM celulares ORDER BY modelo")
+        return [dict(row) for row in cursor.fetchall()]
+
 
 # -----------------------------------------------------------------------------
 # SERVIÇOS
@@ -1235,6 +1253,9 @@ def pesquisar_ordem_servico(criterio, valor):
 def excluir_ordem_servico(ordem_servico_id):
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        # Remove registros filhos sem CASCADE antes de apagar a OS
+        cursor.execute("DELETE FROM ordem_cancelamento WHERE ordem_servico_id = ?", (ordem_servico_id,))
+        cursor.execute("DELETE FROM ordem_entrega WHERE ordem_servico_id = ?", (ordem_servico_id,))
         cursor.execute("DELETE FROM ordem_servico WHERE id = ?", (ordem_servico_id,))
         conn.commit()
         return cursor.rowcount > 0
