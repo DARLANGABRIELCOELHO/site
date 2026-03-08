@@ -232,6 +232,57 @@ def excluir_cliente(cliente_id):
     except sqlite3.IntegrityError:
         return False
 
+def obter_historico_cliente(cliente_id: int) -> dict:
+    """Busca LTV, total_os, total_vendas, e as listas de ordens e vendas do cliente."""
+    historico = {
+        "ltv": 0.0,
+        "total_os": 0,
+        "total_vendas": 0,
+        "ordens": [],
+        "vendas": []
+    }
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Histórico de Vendas
+        cursor.execute("""
+            SELECT id, data_venda, valor_total, forma_pagamento
+            FROM vendas
+            WHERE cliente_id = ?
+            ORDER BY data_venda DESC, id DESC
+        """, (cliente_id,))
+        historico["vendas"] = [dict(row) for row in cursor.fetchall()]
+
+        # Histórico de OS
+        cursor.execute("""
+            SELECT id, data_cadastro, status, modelo, relato
+            FROM ordem_servico
+            WHERE cliente_id = ?
+            ORDER BY data_cadastro DESC, id DESC
+        """, (cliente_id,))
+        
+        ordens_raw = [dict(row) for row in cursor.fetchall()]
+        
+        for ordem in ordens_raw:
+            # Pega o preço total dos serviços dessa OS para somar no LTV
+            cursor.execute("""
+                SELECT sum(preco_servico_snapshot) as total_servicos
+                FROM ordem_servico_servicos
+                WHERE ordem_servico_id = ?
+            """, (ordem["id"],))
+            total_os = cursor.fetchone()["total_servicos"] or 0.0
+            ordem["total_servicos"] = total_os
+            historico["ltv"] += float(total_os)
+            
+        historico["ordens"] = ordens_raw
+        
+        # Consolida Totais
+        historico["total_os"] = len(historico["ordens"])
+        historico["total_vendas"] = len(historico["vendas"])
+        historico["ltv"] += sum(float(v["valor_total"] or 0) for v in historico["vendas"])
+        
+    return historico
+
 # ======================================================================
 # TÉCNICOS
 # ======================================================================
