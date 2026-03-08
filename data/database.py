@@ -16,6 +16,8 @@ def inicializar_estado():
     inicializar_banco_clientes()
     inicializar_banco_tecnicos()
     inicializar_banco_produtos()
+    inicializar_banco_celulares()
+    inicializar_banco_servicos()
 
 
 # ======================================================================
@@ -263,33 +265,273 @@ def excluir_produto(produto_id):
 #-----------------------------------------------------------------------------
 # CELULARES
 #-----------------------------------------------------------------------------
-def celulares():
-    return [
-        {"id": 1, 
-        "modelo": "Celular A",
-        "marca": "Marca A",
-        "cor": "Preto",
-        "imei": "1234567890",
-        "data_cadastro": "2023-04-01",
-        "custos_de_aquisicao": 200.0,
-        "custos_de_reparo": 50.0,
-        "preco": 400.0,
-        "condicao": "bom",
-        "fotos": ["foto1.jpg", "foto2.jpg"]
-        }
-        ]
-def servicos():
-    return [
-        {"id": 1, 
-        "name": "Serviço A",
-        "modelo_celular": "Celular A",
-        "categoria": "Reparo de tela",
-        "custos": 50.0,
-        "preco": 100.0,
-        "tempo_estimado": "2 horas",
-        "observacao": "Garantia de 3 meses",
-        "data_cadastro": "2023-05-01"}
-        ]
+# chave personalizada para o banco de dados celulares
+CELULAR_ID = "id"
+CELULAR_MODELO = "modelo"
+CELULAR_MARCA = "marca"
+CELULAR_COR = "cor"
+CELULAR_IMEI = "imei"
+CELULAR_DATA_CADASTRO = "data_cadastro"
+CELULAR_CUSTO_AQUISICAO = "custos_de_aquisicao"
+CELULAR_CUSTO_REPARO = "custos_de_reparo"
+CELULAR_PRECO = "preco"
+CELULAR_CONDICAO = "condicao"
+CELULAR_FOTOS = "fotos"
+CELULAR_OBSERVACAO = "observacao"
+# inicializa o banco de dados para celulares, criando a tabela e inserindo um registro de exemplo
+CELULAR_ID = "id"
+CELULAR_MODELO = "modelo"
+CELULAR_MARCA = "marca"
+CELULAR_COR = "cor"
+CELULAR_IMEI = "imei"
+CELULAR_DATA_CADASTRO = "data_cadastro"
+CELULAR_CUSTO_AQUISICAO = "custos_de_aquisicao"
+CELULAR_CUSTO_REPARO = "custos_de_reparo"
+CELULAR_PRECO = "preco"
+CELULAR_CONDICAO = "condicao"
+CELULAR_FOTOS = "fotos"
+CELULAR_OBSERVACAO = "observacao"
+# inicializa o banco de dados para celulares, criando a tabela e inserindo um registro de exemplo
+def inicializar_banco_celulares():
+    with get_db_connection() as conn:
+        conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS celulares (
+                {CELULAR_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
+                {CELULAR_MODELO} TEXT NOT NULL,
+                {CELULAR_MARCA} TEXT NOT NULL,
+                {CELULAR_COR} TEXT NOT NULL,
+                {CELULAR_IMEI} TEXT NOT NULL UNIQUE,
+                {CELULAR_DATA_CADASTRO} TEXT NOT NULL,
+                {CELULAR_CUSTO_AQUISICAO} REAL NOT NULL,
+                {CELULAR_CUSTO_REPARO} REAL NOT NULL,
+                {CELULAR_PRECO} REAL NOT NULL,
+                {CELULAR_CONDICAO} TEXT NOT NULL,
+                {CELULAR_FOTOS} TEXT NOT NULL,
+                {CELULAR_OBSERVACAO} TEXT NOT NULL
+            )
+        """)
+
+        cursor = conn.execute("SELECT COUNT(*) FROM celulares")
+        total = cursor.fetchone()[0]
+
+        if total == 0:
+            conn.execute(f"""
+                INSERT INTO celulares (
+                    {CELULAR_MODELO}, {CELULAR_MARCA}, {CELULAR_COR}, {CELULAR_IMEI},
+                    {CELULAR_DATA_CADASTRO}, {CELULAR_CUSTO_AQUISICAO},
+                    {CELULAR_CUSTO_REPARO}, {CELULAR_PRECO},
+                    {CELULAR_CONDICAO}, {CELULAR_FOTOS}, {CELULAR_OBSERVACAO}
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                "Celular A",
+                "Marca A",
+                "Preto",
+                "1234567890",
+                "2023-04-01",
+                200.0,
+                50.0,
+                400.0,
+                "bom",
+                "foto1.jpg,foto2.jpg",
+                "Celular em bom estado, com pequenas marcas de uso"
+            ))
+
+        conn.commit()
+
+# obtem um celular pelo ID, retornando um dicionário com os dados ou None se não encontrado
+def obter_celular(celular_id):
+    with get_db_connection() as conn:
+        row = conn.execute(
+            f"SELECT * FROM celulares WHERE {CELULAR_ID} = ?",
+            (celular_id,)
+        ).fetchone()
+    return dict(row) if row else None
+# insere um novo celular no banco de dados, retornando o registro criado com o ID gerado
+def inserir_celular(modelo, marca, cor, imei, data_cadastro, custos_de_aquisicao, custos_de_reparo, preco, condicao, fotos, observacao):
+    with get_db_connection() as conn:
+        cursor = conn.execute(f"""
+            INSERT INTO celulares (
+                {CELULAR_MODELO}, {CELULAR_MARCA}, {CELULAR_COR}, {CELULAR_IMEI},
+                {CELULAR_DATA_CADASTRO}, {CELULAR_CUSTO_AQUISICAO},
+                {CELULAR_CUSTO_REPARO}, {CELULAR_PRECO}, {CELULAR_CONDICAO},
+                {CELULAR_FOTOS}, {CELULAR_OBSERVACAO}
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            modelo, marca, cor, imei, data_cadastro,
+            custos_de_aquisicao, custos_de_reparo, preco,
+            condicao, ",".join(fotos), observacao
+        ))
+        conn.commit()
+        novo_id = cursor.lastrowid
+    return obter_celular(novo_id)
+# atualiza um celular existente pelo ID, retornando o registro atualizado ou None se não encontrado
+def atualizar_celular(celular_id, modelo, marca, cor, imei, data_cadastro, custos_de_aquisicao, custos_de_reparo, preco, condicao, fotos, observacao):
+    with get_db_connection() as conn:
+        conn.execute(f"""
+            UPDATE celulares SET
+                {CELULAR_MODELO} = ?, {CELULAR_MARCA} = ?, {CELULAR_COR} = ?, {CELULAR_IMEI} = ?,
+                {CELULAR_DATA_CADASTRO} = ?, {CELULAR_CUSTO_AQUISICAO} = ?,
+                {CELULAR_CUSTO_REPARO} = ?, {CELULAR_PRECO} = ?, {CELULAR_CONDICAO} = ?, {CELULAR_FOTOS} = ?, {CELULAR_OBSERVACAO} = ?
+            WHERE {CELULAR_ID} = ?
+        """, (
+            modelo, marca, cor, imei, data_cadastro,
+            custos_de_aquisicao, custos_de_reparo, preco,
+            condicao, ",".join(fotos), observacao, celular_id
+        ))
+        conn.commit()
+    return obter_celular(celular_id)
+# exclui um celular pelo ID, retornando True se excluído ou False se não encontrado
+def excluir_celular(celular_id):
+    with get_db_connection() as conn:
+        conn.execute(f"DELETE FROM celulares WHERE {CELULAR_ID} = ?", (celular_id,))
+        conn.commit()
+
+# -----------------------------------------------------------------------------
+# SERVIÇOS
+# -----------------------------------------------------------------------------
+# CHAVE DE DADOS PARA SERVIÇOS
+SERVICO_ID = "id"
+SERVICO_NOME = "nome"
+SERVICO_MODELO_CELULAR = "modelo_celular"
+SERVICO_CATEGORIA = "categoria"
+SERVICO_CUSTOS = "custos"
+SERVICO_PRECO = "preco"
+SERVICO_TEMPO_ESTIMADO = "tempo_estimado"
+SERVICO_OBSERVACAO = "observacao"
+SERVICO_DATA_CADASTRO = "data_cadastro"
+# INICIALIZAÇÃO DO BANCO DE DADOS PARA SERVIÇOS
+def inicializar_banco_servicos():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS servicos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                modelo_celular TEXT,
+                categoria TEXT,
+                custos REAL,
+                preco REAL,
+                tempo_estimado TEXT,
+                observacao TEXT,
+                data_cadastro TEXT
+            )
+        """)
+
+        cursor.execute("SELECT COUNT(*) FROM servicos")
+        total = cursor.fetchone()[0]
+
+        if total == 0:
+            cursor.execute("""
+                INSERT INTO servicos (
+                    nome, modelo_celular, categoria, custos, preco,
+                    tempo_estimado, observacao, data_cadastro
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                "Serviço A",
+                "Celular A",
+                "Reparo de tela",
+                50.0,
+                100.0,
+                "2 horas",
+                "Garantia de 3 meses",
+                "2023-05-01"
+            ))
+
+        conn.commit()
+
+def obter_servicos():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM servicos")
+        resultados = cursor.fetchall()
+    return [dict(row) for row in resultados]
+
+def obter_servico(servico_id):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM servicos WHERE id = ?", (servico_id,))
+        row = cursor.fetchone()
+    return dict(row) if row else None
+# INSERÇÃO DE SERVIÇOS
+def inserir_servico(nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO servicos (
+                nome, modelo_celular, categoria, custos, preco,
+                tempo_estimado, observacao, data_cadastro
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro))
+        conn.commit()
+        novo_id = cursor.lastrowid
+    return obter_servico(novo_id)
+# ATUALIZAÇÃO DE SERVIÇOS
+def atualizar_servico(servico_id, nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE servicos
+            SET nome = ?, modelo_celular = ?, categoria = ?, custos = ?, preco = ?,
+                tempo_estimado = ?, observacao = ?, data_cadastro = ?
+            WHERE id = ?
+        """, (nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro, servico_id))
+        conn.commit()
+    return obter_servico(servico_id)
+# PESQUISA DE SERVIÇOS
+def pesquisar_servicos(modelo_celular="", categoria=""):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM servicos WHERE 1=1"
+        parametros = []
+
+        if modelo_celular.strip():
+            query += " AND modelo_celular LIKE ?"
+            parametros.append(f"%{modelo_celular}%")
+
+        if categoria.strip():
+            query += " AND categoria LIKE ?"
+            parametros.append(f"%{categoria}%")
+
+        cursor.execute(query, parametros)
+        resultados = cursor.fetchall()
+
+    return [dict(row) for row in resultados]
+# obtém modelos distintos para preenchimento automático
+def obter_modelos_distintos(termo=""):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if termo:
+            cursor.execute(
+                "SELECT DISTINCT modelo_celular FROM servicos WHERE modelo_celular LIKE ? ORDER BY modelo_celular",
+                (f"%{termo}%",)
+            )
+        else:
+            cursor.execute("SELECT DISTINCT modelo_celular FROM servicos ORDER BY modelo_celular")
+        resultados = cursor.fetchall()
+    return [row["modelo_celular"] for row in resultados if row["modelo_celular"]]
+# pesquisa de categorias distintas para preenchimento automático do campo de categoria
+def obter_categorias_distintas(termo=""):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if termo:
+            cursor.execute(
+                "SELECT DISTINCT categoria FROM servicos WHERE categoria LIKE ? ORDER BY categoria",
+                (f"%{termo}%",)
+            )
+        else:
+            cursor.execute("SELECT DISTINCT categoria FROM servicos ORDER BY categoria")
+        resultados = cursor.fetchall()
+    return [row["categoria"] for row in resultados if row["categoria"]]
+
+# EXCLUSÃO DE SERVIÇOS
+def excluir_servico(servico_id):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM servicos WHERE id = ?", (servico_id,))
+        conn.commit()
 #========================================================================================================================================
 # funçoes de dados da pagina vendas
 #========================================================================================================================================
