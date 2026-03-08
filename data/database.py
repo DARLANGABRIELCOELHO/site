@@ -97,6 +97,119 @@ def inserir_cliente(nome, telefone, documento, endereco, observacoes):
         """, (nome, telefone, documento, endereco, observacoes, data_cadastro))
         conn.commit()
         return cursor.lastrowid
+# lista garantias ativas (data_fim_garantia >= hoje) com dados do cliente e OS
+def listar_garantias_ativas():
+    hoje = date.today().isoformat()
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT oe.id, oe.ordem_servico_id, oe.garantia, oe.data_fim_garantia,
+                   oe.valor_total, oe.forma_pagamento, oe.data,
+                   c.nome AS cliente_nome, c.telefone AS cliente_telefone,
+                   os.modelo, os.status AS os_status
+            FROM ordem_entrega oe
+            JOIN clientes c ON oe.cliente_id = c.id
+            JOIN ordem_servico os ON oe.ordem_servico_id = os.id
+            WHERE oe.data_fim_garantia IS NOT NULL
+              AND oe.data_fim_garantia >= ?
+            ORDER BY oe.data_fim_garantia ASC
+        """, (hoje,))
+        return [dict(row) for row in cursor.fetchall()]
+
+# calcula todos os KPIs do dashboard para um período (data_inicio como string ISO ou None)
+def calcular_kpis(data_inicio: str = None):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+
+        filtro_os  = "AND os.data_cadastro >= ?"  if data_inicio else ""
+        filtro_oe  = "AND oe.data >= ?"           if data_inicio else ""
+        args_os    = (data_inicio,)                if data_inicio else ()
+        args_oe    = (data_inicio,)                if data_inicio else ()
+
+        # Faturamento e OS entregues
+        c.execute(f"""
+            SELECT COUNT(*) AS entregues, COALESCE(SUM(oe.valor_total),0) AS faturamento
+            FROM ordem_entrega oe WHERE 1=1 {filtro_oe}
+        """, args_oe)
+        r = dict(c.fetchone())
+        faturamento  = r["faturamento"]
+        os_entregues = r["entregues"]
+
+        # Gastos (custo dos serviços nas OS do período)
+        c.execute(f"""
+            SELECT COALESCE(SUM(oss.custo_servico_snapshot),0) AS gastos
+            FROM ordem_servico_servicos oss
+            JOIN ordem_servico os ON oss.ordem_servico_id = os.id
+            WHERE 1=1 {filtro_os}
+        """, args_os)
+        gastos = dict(c.fetchone())["gastos"]
+
+        # OS Total e Pendentes
+        c.execute(f"""
+            SELECT COUNT(*) AS total,
+                   COUNT(CASE WHEN os.status IN ('aberta','pendente') THEN 1 END) AS pendentes
+            FROM ordem_servico os WHERE 1=1 {filtro_os}
+        """, args_os)
+        r = dict(c.fetchone())
+        os_total    = r["total"]
+        os_pendentes= r["pendentes"]
+
+        # Cancelamentos
+        c.execute(f"""
+            SELECT COUNT(*) AS cancelados
+            FROM ordem_cancelamento oc
+            JOIN ordem_servico os ON oc.ordem_servico_id = os.id
+            WHERE 1=1 {filtro_os}
+        """, args_os)
+        os_cancelados = dict(c.fetchone())["cancelados"]
+
+        # OS com garantia ativa (retornos de garantia) — aproximação por OS entregues com garantia no período
+        c.execute(f"""
+            SELECT COUNT(*) AS com_garantia
+            FROM ordem_entrega oe
+            WHERE oe.garantia IS NOT NULL AND oe.garantia != '' {filtro_oe}
+        """, args_oe)
+        os_com_garantia = dict(c.fetchone())["com_garantia"]
+
+        # Custo e potencial do estoque (produtos)
+        c.execute("""
+            SELECT COALESCE(SUM(custos * estoque),0)  AS custo_estoque,
+                   COALESCE(SUM(preco  * estoque),0)  AS potencial_estoque
+            FROM produtos
+        """)
+        r = dict(c.fetchone())
+        custo_estoque     = r["custo_estoque"]
+        potencial_estoque = r["potencial_estoque"]
+
+    lucro        = faturamento - gastos
+    ticket_medio = faturamento / os_entregues if os_entregues > 0 else 0
+    taxa_garantia  = (os_com_garantia / os_entregues * 100) if os_entregues > 0 else 0
+    taxa_cancelam  = (os_cancelados   / os_total     * 100) if os_total     > 0 else 0
+    roi_estoque    = (lucro / custo_estoque * 100) if custo_estoque > 0 else 0
+
+    def brl(v): return f"R$ {v:,.2f}".replace(",","X").replace(".",",").replace("X",".")
+
+    return {
+        "taxa_garantia":      f"{taxa_garantia:.1f}%",
+        "os_total":           str(os_total),
+        "faturamento":        brl(faturamento),
+        "gastos":             brl(gastos),
+        "custo_estoque":      brl(custo_estoque),
+        "lucro_liquido":      brl(lucro),
+        "ticket_medio":       brl(ticket_medio),
+        "os_entregues":       str(os_entregues),
+        "os_pendentes":       str(os_pendentes),
+        "taxa_cancelamento":  f"{taxa_cancelam:.1f}%",
+        "roi_estoque":        f"{roi_estoque:.1f}%",
+        "potencial_estoque":  brl(potencial_estoque),
+    }
+
+# lista todos os clientes cadastrados no banco de dados
+def listar_clientes():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM clientes ORDER BY nome")
+        return [dict(row) for row in cursor.fetchall()]
 # atualiza as informações de um cliente existente no banco de dados
 def atualizar_cliente(cliente_id, nome, telefone, documento, endereco, observacoes):
     with get_db_connection() as conn:
@@ -162,6 +275,24 @@ def obter_tecnico(tecnico_id):
         """, (tecnico_id,)).fetchone()
 
     return dict(tecnico) if tecnico else None
+# lista todos os técnicos com contagem de OS por status
+def listar_tecnicos():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                t.id, t.nome, t.telefone, t.especialidade, t.data_cadastro,
+                COUNT(CASE WHEN os.status IN ('aberta','em_andamento') THEN 1 END) AS os_andamento,
+                COUNT(CASE WHEN os.status = 'entregue' THEN 1 END)                AS os_concluidas,
+                COUNT(CASE WHEN os.status = 'pendente' THEN 1 END)                AS os_pendentes,
+                COUNT(os.id)                                                       AS os_total
+            FROM tecnicos t
+            LEFT JOIN ordem_servico os ON os.tecnico_id = t.id
+            GROUP BY t.id
+            ORDER BY t.nome
+        """)
+        return [dict(row) for row in cursor.fetchall()]
+
 # insere um novo técnico no banco de dados
 def inserir_tecnico(nome, telefone, especialidade):
     hoje = date.today().isoformat()
@@ -267,6 +398,17 @@ def atualizar_produto(produto_id, nome, categoria, custos, preco, data_cadastro,
         """, (nome, categoria, custos, preco, data_cadastro, estoque, estoque_minimo, produto_id))
         conn.commit()
     return obter_produto(produto_id)
+# lista todos os produtos ordenados por nome
+def listar_produtos(filtro: str = ""):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if filtro:
+            cursor.execute("SELECT * FROM produtos WHERE nome LIKE ? OR categoria LIKE ? ORDER BY nome",
+                           (f"%{filtro}%", f"%{filtro}%"))
+        else:
+            cursor.execute("SELECT * FROM produtos ORDER BY nome")
+        return [dict(row) for row in cursor.fetchall()]
+
 # exclui um produto do banco de dados com base no ID fornecido
 def excluir_produto(produto_id):
     with get_db_connection() as conn:
@@ -449,6 +591,17 @@ def inicializar_banco_servicos():
             ))
 
         conn.commit()
+# lista todos os serviços com filtro opcional por nome ou categoria
+def listar_servicos(filtro: str = ""):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if filtro:
+            cursor.execute("SELECT * FROM servicos WHERE nome LIKE ? OR categoria LIKE ? ORDER BY nome",
+                           (f"%{filtro}%", f"%{filtro}%"))
+        else:
+            cursor.execute("SELECT * FROM servicos ORDER BY nome")
+        return [dict(row) for row in cursor.fetchall()]
+
 # FUNÇÃO PARA OBTER O PROXIMO ID DISPONÍVEL PARA SERVIÇOS
 def obter_servicos():
     with get_db_connection() as conn:

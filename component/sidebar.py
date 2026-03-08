@@ -1,121 +1,127 @@
-# O arquivo sidebar.py é responsável por criar a barra lateral do sistema, que contém as rotas para as diferentes páginas do sistema. Ele define uma função create_sidebar() que retorna um dicionário com as rotas das páginas, permitindo que os usuários naveguem facilmente entre as diferentes seções do sistema.
 import sys
 import os
-from datetime import datetime
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
-    QSpacerItem, QSizePolicy, QMessageBox, QFileDialog
+    QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QFrame,
+    QSpacerItem, QSizePolicy
 )
-import pages
-def create_sidebar():
-    menu_routes = {
-        "dashboard": "/pages/dashboard.py",
-        "laboratorio": "/pages/laboratorio.py",
-        "vendas": "/pages/vendas.py",
-        "clientes": "/pages/clientes.py",
-        "garantia": "/pages/garantia.py",
-        "catalogo": "/pages/catalogo.py",
-        "tecnicos": "/pages/tecnicos.py",
-    }
-    return menu_routes
+from PyQt6.QtCore import Qt, pyqtSignal
+
+
 class SidebarMenu(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
+    """
+    Barra lateral de navegação do IFIX Pro.
+    Emite o sinal `pagina_mudou` com o índice da tela sempre que um item é clicado.
+    Também aceita um QStackedWidget opcional para controle direto.
+    """
+    pagina_mudou = pyqtSignal(int)
 
-    def initUI(self):
+    ITENS_MENU = [
+        ("⊞", "Dashboard"),
+        ("🔧", "Laboratório"),
+        ("🛒", "Vendas"),
+        ("👥", "Clientes"),
+        ("🛡️", "Garantias & RMA"),
+        ("📦", "Catálogo"),
+        ("🧑‍🔧", "Técnicos"),
+    ]
+
+    def __init__(self, stacked_widget=None, parent=None):
+        super().__init__(parent)
+        self.stacked_widget = stacked_widget
+        self.botoes = []
+        self._indice_ativo = 0
+        self._initUI()
+        self._aplicar_estilos()
+
+    def _initUI(self):
         self.setFixedWidth(260)
-        
-        # Layout Principal
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(20, 30, 20, 30)
-        main_layout.setSpacing(10)
+        self.setObjectName("sidebar")
 
-        # --- LOGO & TÍTULO ---
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 30, 20, 30)
+        layout.setSpacing(10)
+
+        # --- Logo ---
         lbl_logo = QLabel("📱 IFIX Pro")
         lbl_logo.setObjectName("logo_title")
-        
+
         lbl_subtitle = QLabel("Manager")
         lbl_subtitle.setObjectName("logo_subtitle")
-        
-        main_layout.addWidget(lbl_logo)
-        main_layout.addWidget(lbl_subtitle)
-        main_layout.addSpacing(30) # Espaço após o logo
 
-        # --- ITENS DO MENU ---
-        itens_menu = [
-            ("⊞", "Dashboard", False),
-            ("🔧", "Laboratório", False),
-            ("🛒", "Vendas", False),
-            ("👥", "Clientes", False),
-            ("🛡️", "Garantias & RMA", False),
-            ("📦", "Catálogo", True),  
-            ("🧑‍🔧", "Técnicos", False)
-        ]
+        layout.addWidget(lbl_logo)
+        layout.addWidget(lbl_subtitle)
+        layout.addSpacing(30)
 
-        self.botoes_menu = []
-        for icone, texto, selecionado in itens_menu:
+        # --- Itens do Menu ---
+        for i, (icone, texto) in enumerate(self.ITENS_MENU):
             btn = QPushButton(f"{icone}   {texto}")
-            btn.setCursor(Qt.PointingHandCursor)
-            
-            # Se for o selecionado, aplica a classe especial no QSS
-            if selecionado:
-                btn.setObjectName("menu_item_ativo")
-            else:
-                btn.setObjectName("menu_item")
-                
-            main_layout.addWidget(btn)
-            self.botoes_menu.append(btn)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setObjectName("menu_item")
+            btn.clicked.connect(lambda checked, idx=i: self.mudar_tela(idx))
+            layout.addWidget(btn)
+            self.botoes.append(btn)
 
-        # --- ESPAÇADOR (Empurra o rodapé para baixo) ---
-        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        main_layout.addItem(spacer)
+        # Marca o primeiro item como ativo por padrão
+        self._marcar_ativo(0)
 
-        # --- CAIXA DE VERSÃO (Rodapé) ---
+        # --- Espaçador ---
+        layout.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+
+        # --- Rodapé (Versão) ---
         box_versao = QFrame()
         box_versao.setObjectName("box_versao")
         box_layout = QVBoxLayout(box_versao)
         box_layout.setContentsMargins(15, 15, 15, 15)
-        
-        lbl_versao_label = QLabel("Versão")
-        lbl_versao_label.setObjectName("lbl_versao_cinza")
-        
-        lbl_versao_valor = QLabel("IFIX Pro v2.0")
-        lbl_versao_valor.setObjectName("lbl_versao_branca")
-        
-        box_layout.addWidget(lbl_versao_label)
-        box_layout.addWidget(lbl_versao_valor)
-        
-        main_layout.addWidget(box_versao)
+        box_layout.addWidget(QLabel("Versão", objectName="lbl_versao_cinza"))
+        box_layout.addWidget(QLabel("IFIX Pro v2.0", objectName="lbl_versao_branca"))
+        layout.addWidget(box_versao)
 
-        self.setLayout(main_layout)
-        self.aplicar_estilos()
+    def mudar_tela(self, index: int):
+        """Muda a tela ativa e atualiza o estado visual dos botões."""
+        self._indice_ativo = index
+        self._marcar_ativo(index)
 
-    def aplicar_estilos(self):
-        """Aplica a paleta hexadecimal e tipografia usando Qt StyleSheet (QSS)"""
-        estilo = """
-        /* Fundo da Sidebar e Tipografia Global */
-        SidebarMenu {
-            background-color: #0F172A;
+        if self.stacked_widget is not None:
+            self.stacked_widget.setCurrentIndex(index)
+
+        self.pagina_mudou.emit(index)
+
+    def _marcar_ativo(self, index: int):
+        for i, btn in enumerate(self.botoes):
+            btn.setObjectName("menu_item_ativo" if i == index else "menu_item")
+
+        # Força o Qt a reaplicar o QSS após a mudança de objectName
+        self.style().unpolish(self)
+        self.style().polish(self)
+        for btn in self.botoes:
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+    def _aplicar_estilos(self):
+        self.setStyleSheet("""
+        /* Fundo da Sidebar */
+        QWidget#sidebar {
+            background-color: #0B1120;
+            border-right: 1px solid #1E293B;
             font-family: 'Poppins', 'Montserrat', sans-serif;
         }
 
-        /* Estilos do Logo */
+        /* Logo */
         QLabel#logo_title {
+            color: #FFFFFF;
             font-size: 22px;
             font-weight: 700;
-            color: #FFFFFF;
         }
         QLabel#logo_subtitle {
+            color: #64748B;
             font-size: 12px;
             font-weight: 600;
-            color: #64748B;
             margin-top: -5px;
-            margin-left: 32px; /* Alinhar com o texto pulando o ícone */
+            margin-left: 32px;
         }
 
-        /* Botões do Menu (Não Selecionados) */
+        /* Botão inativo */
         QPushButton#menu_item {
             background-color: transparent;
             color: #64748B;
@@ -127,25 +133,25 @@ class SidebarMenu(QWidget):
             border: none;
         }
         QPushButton#menu_item:hover {
-            background-color: #1E293B; /* Leve destaque ao passar o mouse */
+            background-color: #1E293B;
             color: #FFFFFF;
         }
 
-        /* Botão do Menu (Selecionado / Ativo) */
+        /* Botão ativo */
         QPushButton#menu_item_ativo {
-            background-color: #0B1120;
-            color: #F26522; /* Destaque Laranja */
+            background-color: #0F172A;
+            color: #F26522;
             font-size: 14px;
             font-weight: 700;
             text-align: left;
             padding: 12px 15px;
             border-radius: 8px;
-            border: 1px solid #1E293B; /* Opcional: bordinha discreta */
+            border: 1px solid #1E293B;
         }
 
-        /* Caixa de Versão no Rodapé */
+        /* Rodapé */
         QFrame#box_versao {
-            background-color: #0B1120;
+            background-color: #0F172A;
             border-radius: 10px;
         }
         QLabel#lbl_versao_cinza {
@@ -157,5 +163,17 @@ class SidebarMenu(QWidget):
             font-size: 13px;
             font-weight: 700;
         }
-        """
-        self.setStyleSheet(estilo)     
+        """)
+
+
+def create_sidebar():
+    """Retorna o mapeamento de rotas do menu (legado)."""
+    return {
+        "dashboard":   "/pages/dashboard.py",
+        "laboratorio": "/pages/laboratorio.py",
+        "vendas":      "/pages/vendas.py",
+        "clientes":    "/pages/clientes.py",
+        "garantia":    "/pages/garantia.py",
+        "catalogo":    "/pages/catalogo.py",
+        "tecnicos":    "/pages/tecnicos.py",
+    }
