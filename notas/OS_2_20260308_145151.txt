@@ -1,0 +1,21 @@
+==========================================
+         ORDEM DE SERVIÇO
+==========================================
+OS#:        2
+Data:       08/03/2026 14:51:51
+Cliente:    Cliente A
+Telefone:   15555-1234
+Aparelho:   iphone 12
+IMEI:       123123
+Técnico:    Técnico A
+Status:     pronto
+Prioridade: alta
+------------------------------------------
+DEFEITO RELATADO:
+muito grave
+------------------------------------------
+SERVIÇOS:
+  - IPHONE 12 CONECTOR DE CARGA: R$ 250.00
+------------------------------------------
+TOTAL: R$ 250.00
+==========================================

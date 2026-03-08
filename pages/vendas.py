@@ -160,6 +160,7 @@ class VendasScreen(QWidget):
         self.btn_finalizar_topo = QPushButton("🛒 Finalizar (0)")
         self.btn_finalizar_topo.setObjectName("btn_primario")
         self.btn_finalizar_topo.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_finalizar_topo.clicked.connect(self._finalizar_venda)
         
         header_layout.addLayout(titulos_layout)
         header_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
@@ -252,12 +253,13 @@ class VendasScreen(QWidget):
         self.btn_finalizar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_finalizar.setFixedHeight(45)
         self.btn_finalizar.setVisible(False)
+        self.btn_finalizar.clicked.connect(self._finalizar_venda)
         self.cart_layout.addWidget(self.btn_finalizar)
 
         main_layout.addWidget(self.cart_frame, stretch=3)
 
-        # Inicializa o carrinho vazio (ou com itens de exemplo)
-        self.atualizar_carrinho(com_itens=True)  # Mude para False para teste
+        # Inicia o PDV limpo
+        self.atualizar_carrinho(com_itens=False)
 
         self.aplicar_estilos()
 
@@ -310,6 +312,22 @@ class VendasScreen(QWidget):
             self.lbl_total_val.setVisible(False)
             self.btn_finalizar.setVisible(False)
             self.btn_finalizar_topo.setText("🛒 Finalizar (0)")
+
+    def _finalizar_venda(self):
+        from PyQt6.QtWidgets import QMessageBox
+        if not self.carrinho_itens:
+            QMessageBox.warning(self, "Carrinho vazio", "Adicione produtos antes de finalizar.")
+            return
+        resp = QMessageBox.question(
+            self, "Finalizar Venda",
+            f"Confirmar venda de {len(self.carrinho_itens)} item(ns)?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if resp == QMessageBox.StandardButton.Yes:
+            # Aqui entraria o registro no banco; por ora reinicia o PDV
+            self.carrinho_itens.clear()
+            self.edit_busca.clear()
+            self.atualizar_carrinho(com_itens=False)
 
     def aplicar_estilos(self):
         estilo = """

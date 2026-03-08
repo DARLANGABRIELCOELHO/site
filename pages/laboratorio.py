@@ -1,261 +1,426 @@
-# laboratorio é a página onde os técnicos podem acessar informações detalhadas sobre os serviços em andamento, incluindo o status de cada serviço, as peças necessárias, os prazos estimados e as instruções de reparo. Ele também pode incluir uma seção para os técnicos registrarem notas e atualizações sobre o progresso dos serviços.
-# Ele pode ser usado para melhorar a comunicação entre os técnicos e a equipe de atendimento ao cliente, garantindo que todos estejam atualizados sobre o status dos serviços e possam fornecer informações precisas aos clientes.
-# ======================================================================
-# IMPORTAÇÕES
-# ======================================================================
+# laboratorio.py — Página de gestão de Ordens de Serviço (PyQt6)
 import sys
 import os
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QLineEdit, QTextEdit, QPushButton, QFrame, QCheckBox,
-    QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QScrollArea,
-    QButtonGroup, QComboBox, QTabWidget, QMainWindow, QStackedWidget
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QLabel, QLineEdit, QPushButton, QFrame,
+    QSpacerItem, QSizePolicy, QMessageBox, QScrollArea,
+    QComboBox, QMenu
 )
+from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
-# Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.ordemdeservico import NovaOrdemServicoWindow, EditarOrdemServicoWindow
+from component.novaentrega import NovaEntregaWindow
 
-# ======================================================================
-# COMPONENTES DA TELA DE LABORATÓRIO (adaptados do catalogo.py)
-# ======================================================================
+
+# ──────────────────────────────────────────────
+# COMPONENTES
+# ──────────────────────────────────────────────
+
 class Badge(QLabel):
-    """Componente para as tags de status e prioridade (ex: Urgente, Pronto)"""
     def __init__(self, texto, cor_fundo, cor_texto):
         super().__init__(texto)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        estilo = f"""
+        self.setStyleSheet(f"""
             background-color: {cor_fundo};
             color: {cor_texto};
             border-radius: 4px;
             padding: 4px 8px;
             font-size: 10px;
             font-weight: 700;
-        """
-        self.setStyleSheet(estilo)
+        """)
+
+
+def _badge_status(status: str) -> Badge:
+    mapa = {
+        "aberta":       ("rgba(234,179,8,0.2)",   "#FDE047", "Pendente"),
+        "pendente":     ("rgba(234,179,8,0.2)",   "#FDE047", "Pendente"),
+        "em análise":   ("rgba(59,130,246,0.2)",  "#60A5FA", "Em Análise"),
+        "em andamento": ("rgba(242,101,34,0.2)",  "#F26522", "Em Andamento"),
+        "pronto":       ("rgba(34,197,94,0.2)",   "#4ADE80", "Pronto"),
+        "entregue":     ("rgba(100,116,139,0.2)", "#94A3B8", "Entregue"),
+    }
+    key = (status or "").lower()
+    fundo, cor, label = mapa.get(key, ("rgba(100,116,139,0.2)", "#94A3B8", status or "—"))
+    return Badge(label, fundo, cor)
+
+
+def _badge_prioridade(prioridade: str) -> Badge:
+    key = (prioridade or "").lower()
+    if key in ("urgente", "alta"):
+        return Badge(prioridade.capitalize(), "rgba(239,68,68,0.2)", "#F87171")
+    return Badge("Normal", "rgba(100,116,139,0.2)", "#94A3B8")
+
+
+def _tempo_relativo(data_str: str) -> str:
+    try:
+        dt = datetime.fromisoformat(data_str)
+        delta = datetime.now() - dt
+        d = delta.days
+        if d == 0:
+            return "Hoje"
+        if d == 1:
+            return "Ontem"
+        if d < 7:
+            return f"{d} dias atrás"
+        if d < 30:
+            return f"{d // 7} sem. atrás"
+        return f"{d // 30} mês(es) atrás"
+    except Exception:
+        return data_str or "—"
+
+
+# ──────────────────────────────────────────────
+# CARD DE OS
+# ──────────────────────────────────────────────
+
+ESTAGIOS = ["aberta", "em análise", "em andamento", "pronto"]
+ESTAGIO_LABELS = {
+    "aberta": "Pendente",
+    "em análise": "Em Análise",
+    "em andamento": "Em Andamento",
+    "pronto": "Pronto",
+}
+
 
 class OSCard(QFrame):
-    """Card de Ordem de Serviço (Expandido ou Colapsado)"""
-    def __init__(self, nome, aparelho, tempo, tecnico, status, prioridade, expandido=False):
+    def __init__(self, ordem: dict, on_status_changed, on_checkout,
+                 on_imprimir, on_whatsapp, on_editar):
         super().__init__()
+        self._ordem = ordem
+        self._on_status_changed = on_status_changed
+        self._on_checkout = on_checkout
+        self._on_imprimir = on_imprimir
+        self._on_whatsapp = on_whatsapp
+        self._on_editar = on_editar
+
         self.setObjectName("os_card")
-        self.setFixedWidth(320)
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        self.setFixedWidth(340)
 
-        # --- Cabeçalho do Card (Ícone, Nome, Aparelho) ---
-        header_layout = QHBoxLayout()
-        lbl_icone = QLabel("📱")
-        lbl_icone.setObjectName("icone_card")
-        
-        info_layout = QVBoxLayout()
-        info_layout.setSpacing(2)
-        lbl_nome = QLabel(nome)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(20, 20, 20, 20)
+        self._layout.setSpacing(12)
+
+        self._build()
+
+    def _build(self):
+        ordem = self._ordem
+
+        # ─ Header ─
+        header = QHBoxLayout()
+        lbl_icon = QLabel("📱")
+        lbl_icon.setObjectName("icone_card")
+
+        info = QVBoxLayout()
+        info.setSpacing(2)
+        lbl_nome = QLabel(ordem.get("cliente_nome") or "Balcão")
         lbl_nome.setObjectName("txt_branca_bold")
-        lbl_aparelho = QLabel(aparelho)
-        lbl_aparelho.setObjectName("txt_cinza")
-        info_layout.addWidget(lbl_nome)
-        info_layout.addWidget(lbl_aparelho)
-        
-        btn_opcoes = QPushButton("⋮")
-        btn_opcoes.setObjectName("btn_transparente")
-        btn_opcoes.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        header_layout.addWidget(lbl_icone)
-        header_layout.addLayout(info_layout)
-        header_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-        header_layout.addWidget(btn_opcoes)
-        layout.addLayout(header_layout)
+        modelo = ordem.get("modelo", "—")
+        cor = (ordem.get("cor") or "").strip()
+        texto_modelo = f"{modelo} • {cor}" if cor else modelo
+        lbl_modelo = QLabel(texto_modelo)
+        lbl_modelo.setObjectName("txt_cinza")
+        info.addWidget(lbl_nome)
+        info.addWidget(lbl_modelo)
 
-        # --- Badges (Status e Prioridade) ---
-        badges_layout = QHBoxLayout()
-        badges_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        
-        # Cores semânticas para os badges adaptadas para tema escuro
-        if status == "Pronto":
-            badges_layout.addWidget(Badge("Pronto", "rgba(34, 197, 94, 0.2)", "#4ADE80")) # Verde
-        elif status == "Pendente":
-            badges_layout.addWidget(Badge("Pendente", "rgba(234, 179, 8, 0.2)", "#FDE047")) # Amarelo
-            
-        if prioridade == "Urgente":
-            badges_layout.addWidget(Badge("Urgente", "rgba(239, 68, 68, 0.2)", "#F87171")) # Vermelho
-        else:
-            badges_layout.addWidget(Badge("Normal", "rgba(100, 116, 139, 0.2)", "#94A3B8")) # Cinza
-            
-        layout.addLayout(badges_layout)
+        header.addWidget(lbl_icon)
+        header.addLayout(info)
+        header.addItem(QSpacerItem(10, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
-        # --- Metadados (Tempo e Técnico) ---
-        meta_layout = QHBoxLayout()
-        meta_layout.addWidget(QLabel(f"🕒 {tempo}"))
-        meta_layout.addWidget(QLabel(f"🔧 {tecnico}"))
-        meta_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-        # Aplica estilo aos labels de meta
-        for i in range(meta_layout.count() - 1):
-            meta_layout.itemAt(i).widget().setObjectName("txt_cinza_pequeno")
-        layout.addLayout(meta_layout)
+        lbl_id = QLabel(f"#{ordem['id']}")
+        lbl_id.setObjectName("txt_cinza")
+        header.addWidget(lbl_id)
 
-        # --- Conteúdo Expandido ---
-        if expandido:
-            # Telefone
-            lbl_tel = QLabel("📞 (11) 93456-7890")
-            lbl_tel.setObjectName("txt_branca")
-            layout.addWidget(lbl_tel)
-            
-            # Defeito
-            layout.addWidget(QLabel("Defeito:", objectName="txt_cinza_pequeno"))
-            layout.addWidget(QLabel("Tela quebrada e bateria viciada.", objectName="txt_branca"))
-            
-            # Serviços
-            layout.addWidget(QLabel("Serviços:", objectName="txt_cinza_pequeno"))
-            serv_layout = QHBoxLayout()
-            serv_layout.addWidget(QLabel("Atualização de Software", objectName="txt_branca"))
-            lbl_preco = QLabel("R$ 80.00")
-            lbl_preco.setObjectName("txt_laranja")
-            serv_layout.addWidget(lbl_preco)
-            layout.addLayout(serv_layout)
-            
-            # Total
-            total_layout = QHBoxLayout()
-            lbl_total_txt = QLabel("Total")
-            lbl_total_txt.setObjectName("txt_branca_bold")
-            lbl_total_val = QLabel("R$ 80.00")
-            lbl_total_val.setObjectName("txt_laranja_bold")
-            total_layout.addWidget(lbl_total_txt)
-            total_layout.addWidget(lbl_total_val)
-            layout.addLayout(total_layout)
-            
-            # Botões de Estágio (Pendente, Em Análise, etc)
-            estagios_layout = QHBoxLayout()
-            estagios = ["Pendente", "Em Análise", "Em Andamento", "Pronto"]
-            for est in estagios:
-                btn_est = QPushButton(est)
-                btn_est.setObjectName("btn_estagio_ativo" if est == "Pronto" else "btn_estagio")
-                estagios_layout.addWidget(btn_est)
-            layout.addLayout(estagios_layout)
-            
-            # Botão de Ação Final
+        self.btn_menu = QPushButton("⋮")
+        self.btn_menu.setObjectName("btn_menu_card")
+        self.btn_menu.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_menu.setFixedWidth(28)
+        self.btn_menu.clicked.connect(self._abrir_menu_acoes)
+        header.addWidget(self.btn_menu)
+
+        self._layout.addLayout(header)
+
+        # ─ Badges ─
+        badges = QHBoxLayout()
+        badges.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        badges.addWidget(_badge_status(ordem.get("status", "")))
+        badges.addWidget(_badge_prioridade(ordem.get("prioridade", "")))
+        self._layout.addLayout(badges)
+
+        # ─ Meta ─
+        meta = QHBoxLayout()
+        lbl_data = QLabel(f"🕒 {_tempo_relativo(ordem.get('data_cadastro', ''))}")
+        lbl_data.setObjectName("txt_cinza_pequeno")
+        lbl_tec = QLabel(f"🔧 {ordem.get('tecnico_nome') or 'Sem técnico'}")
+        lbl_tec.setObjectName("txt_cinza_pequeno")
+        meta.addWidget(lbl_data)
+        meta.addWidget(lbl_tec)
+        meta.addItem(QSpacerItem(10, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        self._layout.addLayout(meta)
+
+        # ─ Relato ─
+        relato = (ordem.get("relato") or "").strip()
+        if relato:
+            lbl_relato_titulo = QLabel("Defeito:")
+            lbl_relato_titulo.setObjectName("txt_cinza_pequeno")
+            lbl_relato = QLabel(relato[:80] + ("…" if len(relato) > 80 else ""))
+            lbl_relato.setObjectName("txt_branca")
+            lbl_relato.setWordWrap(True)
+            self._layout.addWidget(lbl_relato_titulo)
+            self._layout.addWidget(lbl_relato)
+
+        # ─ Serviços ─
+        servicos = ordem.get("servicos", [])
+        if servicos:
+            lbl_sv_titulo = QLabel("Serviços:")
+            lbl_sv_titulo.setObjectName("txt_cinza_pequeno")
+            self._layout.addWidget(lbl_sv_titulo)
+            for sv in servicos:
+                linha_sv = QHBoxLayout()
+                lbl_sv_nome = QLabel(sv.get("nome", "—"))
+                lbl_sv_nome.setObjectName("txt_branca")
+                lbl_sv_nome.setWordWrap(True)
+                lbl_sv_preco = QLabel(f"R$ {float(sv.get('preco') or 0):.2f}")
+                lbl_sv_preco.setObjectName("txt_laranja")
+                linha_sv.addWidget(lbl_sv_nome)
+                linha_sv.addItem(QSpacerItem(10, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+                linha_sv.addWidget(lbl_sv_preco)
+                self._layout.addLayout(linha_sv)
+
+        # ─ Total ─
+        total = float(ordem.get("total_servicos") or 0)
+        total_row = QHBoxLayout()
+        lbl_total_t = QLabel("Total")
+        lbl_total_t.setObjectName("txt_branca_bold")
+        lbl_total_v = QLabel(f"R$ {total:.2f}")
+        lbl_total_v.setObjectName("txt_laranja_bold")
+        total_row.addWidget(lbl_total_t)
+        total_row.addWidget(lbl_total_v)
+        total_row.addItem(QSpacerItem(10, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        self._layout.addLayout(total_row)
+
+        # ─ Botões de estágio ─
+        estagios_layout = QHBoxLayout()
+        estagios_layout.setSpacing(4)
+        status_atual = (ordem.get("status") or "").lower()
+        for est in ESTAGIOS:
+            label = ESTAGIO_LABELS[est]
+            btn = QPushButton(label)
+            btn.setObjectName("btn_estagio_ativo" if est == status_atual else "btn_estagio")
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(lambda _, e=est: self._on_status_changed(ordem["id"], e))
+            estagios_layout.addWidget(btn)
+        self._layout.addLayout(estagios_layout)
+
+        # ─ Checkout ─
+        if status_atual == "pronto":
             btn_checkout = QPushButton("✓ Entregar / Checkout")
             btn_checkout.setObjectName("btn_primario")
             btn_checkout.setCursor(Qt.CursorShape.PointingHandCursor)
-            layout.addWidget(btn_checkout)
-            
-            # Borda de destaque quando o card está foco/pronto
+            btn_checkout.clicked.connect(lambda: self._on_checkout(ordem["id"]))
+            self._layout.addWidget(btn_checkout)
             self.setStyleSheet("QFrame#os_card { border: 1px solid #F26522; }")
-        else:
-            # Indicador de colapsado (setinha)
-            seta = QLabel(">")
-            seta.setObjectName("txt_cinza")
-            seta.setAlignment(Qt.AlignmentFlag.AlignRight)
-            layout.addWidget(seta)
+
+    def _abrir_menu_acoes(self):
+        menu = QMenu(self)
+        menu.setObjectName("menu_card")
+
+        acao_imprimir = QAction("🖨  Imprimir", self)
+        acao_whatsapp = QAction("💬  Chamar no WhatsApp", self)
+        acao_editar   = QAction("✏  Editar", self)
+
+        acao_imprimir.triggered.connect(lambda: self._on_imprimir(self._ordem))
+        acao_whatsapp.triggered.connect(lambda: self._on_whatsapp(self._ordem))
+        acao_editar.triggered.connect(lambda: self._on_editar(self._ordem))
+
+        menu.addAction(acao_imprimir)
+        menu.addAction(acao_whatsapp)
+        menu.addSeparator()
+        menu.addAction(acao_editar)
+
+        menu.exec(self.btn_menu.mapToGlobal(self.btn_menu.rect().bottomLeft()))
+
+
+# ──────────────────────────────────────────────
+# TELA PRINCIPAL
+# ──────────────────────────────────────────────
 
 class LaboratorioScreen(QWidget):
     def __init__(self):
         super().__init__()
+        db.inicializar_estado()
+        self._janela_nova_os = None
         self.initUI()
 
     def initUI(self):
-        # Não define window title aqui porque será gerenciado pela MainWindow
         self.setMinimumSize(900, 700)
-        
+
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(40, 40, 40, 40)
         main_layout.setSpacing(20)
 
-        # --- Cabeçalho Superior ---
-        header_layout = QHBoxLayout()
-        
-        titulos_layout = QVBoxLayout()
-        titulos_layout.setSpacing(0)
+        # ─ Cabeçalho ─
+        header = QHBoxLayout()
+        titulos = QVBoxLayout()
+        titulos.setSpacing(0)
         lbl_titulo = QLabel("Laboratório")
         lbl_titulo.setObjectName("title_main")
         lbl_sub = QLabel("Gestão de Ordens de Serviço")
         lbl_sub.setObjectName("subtitle")
-        titulos_layout.addWidget(lbl_titulo)
-        titulos_layout.addWidget(lbl_sub)
-        
+        titulos.addWidget(lbl_titulo)
+        titulos.addWidget(lbl_sub)
+
         btn_nova_os = QPushButton("+ Nova OS")
         btn_nova_os.setObjectName("btn_primario")
         btn_nova_os.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        header_layout.addLayout(titulos_layout)
-        header_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-        header_layout.addWidget(btn_nova_os)
-        main_layout.addLayout(header_layout)
+        btn_nova_os.clicked.connect(self._abrir_nova_os)
 
-        # --- Barra de Filtros ---
-        filtros_layout = QHBoxLayout()
-        filtros_layout.setSpacing(15)
-        
+        header.addLayout(titulos)
+        header.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        header.addWidget(btn_nova_os)
+        main_layout.addLayout(header)
+
+        # ─ Filtros ─
+        filtros = QHBoxLayout()
+        filtros.setSpacing(15)
         self.edit_busca = QLineEdit()
         self.edit_busca.setPlaceholderText("🔍 Buscar por cliente, modelo ou ID...")
-        
-        self.cmb_status = QComboBox()
-        self.cmb_status.addItems(["Todos os Status", "Pendente", "Em Andamento", "Pronto"])
-        self.cmb_status.setFixedWidth(180)
-        
-        filtros_layout.addWidget(self.edit_busca)
-        filtros_layout.addWidget(self.cmb_status)
-        main_layout.addLayout(filtros_layout)
+        self.edit_busca.textChanged.connect(self._carregar_ordens)
 
-        # --- Área de Scroll para os Cards ---
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setObjectName("scroll_area")
-        
-        scroll_content = QWidget()
-        scroll_content.setObjectName("scroll_content")
-        
-        # Grid para colocar os cards lado a lado
-        grid_cards = QGridLayout(scroll_content)
-        grid_cards.setSpacing(20)
-        grid_cards.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        
-        # Criando cards baseados na imagem
-        card1 = OSCard("Juliana Costa", "iphone 14", "21 days ago", "Maria Santos", "Pronto", "Urgente", expandido=True)
-        card2 = OSCard("Carlos Mendes", "iphone 12", "a month ago", "Pedro Oliveira", "Pendente", "Normal", expandido=False)
-        
-        grid_cards.addWidget(card1, 0, 0)
-        grid_cards.addWidget(card2, 0, 1)
-        
-        scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area)
+        self.cmb_status = QComboBox()
+        self.cmb_status.addItems([
+            "Todos os Status", "aberta", "em análise", "em andamento", "pronto", "entregue"
+        ])
+        self.cmb_status.setFixedWidth(190)
+        self.cmb_status.currentIndexChanged.connect(self._carregar_ordens)
+
+        filtros.addWidget(self.edit_busca)
+        filtros.addWidget(self.cmb_status)
+        main_layout.addLayout(filtros)
+
+        # ─ Scroll + grid ─
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setObjectName("scroll_area")
+
+        self.scroll_content = QWidget()
+        self.scroll_content.setObjectName("scroll_content")
+
+        self.grid_cards = QGridLayout(self.scroll_content)
+        self.grid_cards.setSpacing(20)
+        self.grid_cards.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+
+        self.scroll_area.setWidget(self.scroll_content)
+        main_layout.addWidget(self.scroll_area)
 
         self.aplicar_estilos()
+        self._carregar_ordens()
+
+    # ─ Lógica ──────────────────────────────────
+
+    def _carregar_ordens(self):
+        for i in reversed(range(self.grid_cards.count())):
+            w = self.grid_cards.itemAt(i).widget()
+            if w:
+                w.deleteLater()
+
+        filtro = self.edit_busca.text().strip()
+        status = self.cmb_status.currentText()
+        if status == "Todos os Status":
+            status = None
+
+        ordens = db.listar_ordens_servico(filtro=filtro, status=status)
+
+        if not ordens:
+            lbl = QLabel("Nenhuma OS encontrada.")
+            lbl.setObjectName("subtitle")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.grid_cards.addWidget(lbl, 0, 0)
+            return
+
+        row, col = 0, 0
+        for ordem in ordens:
+            card = OSCard(
+                ordem,
+                self._mudar_status,
+                self._checkout,
+                self._imprimir_os,
+                self._chamar_whatsapp,
+                self._editar_os,
+            )
+            self.grid_cards.addWidget(card, row, col)
+            col += 1
+            if col > 2:
+                col = 0
+                row += 1
+
+    def _mudar_status(self, ordem_id: int, novo_status: str):
+        db.atualizar_status_ordem(ordem_id, novo_status)
+        self._carregar_ordens()
+
+    def _checkout(self, ordem_id: int):
+        # Busca a ordem completa (com servicos) para passar ao dialog
+        ordens = db.listar_ordens_servico(filtro=str(ordem_id))
+        ordem = next((o for o in ordens if o["id"] == ordem_id), None)
+        if not ordem:
+            QMessageBox.critical(self, "Erro", f"OS #{ordem_id} não encontrada.")
+            return
+
+        dlg = NovaEntregaWindow(ordem)
+        dlg.accepted.connect(self._carregar_ordens)
+        dlg.exec()
+
+    def _abrir_nova_os(self):
+        self._janela_nova_os = NovaOrdemServicoWindow()
+        self._janela_nova_os.accepted.connect(self._carregar_ordens)
+        self._janela_nova_os.exec()
+
+    def _imprimir_os(self, ordem: dict):
+        try:
+            from component.notas import imprimir_os
+            imprimir_os(ordem["id"])
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Falha ao imprimir OS:\n{e}")
+
+    def _chamar_whatsapp(self, ordem: dict):
+        try:
+            from component.whatsapp import chamar_cliente_whatsapp
+            chamar_cliente_whatsapp(ordem["id"])
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Falha ao abrir WhatsApp:\n{e}")
+
+    def _editar_os(self, ordem: dict):
+        try:
+            janela = EditarOrdemServicoWindow(ordem["id"])
+            janela.accepted.connect(self._carregar_ordens)
+            janela.exec()
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Falha ao abrir edição da OS:\n{e}")
+
+    # ─ Estilos ─────────────────────────────────
 
     def aplicar_estilos(self):
-        estilo = """
-        /* Fundo e Tipografia Global (dentro do LaboratorioScreen) */
+        self.setStyleSheet("""
         QWidget {
             background-color: #0F172A;
             font-family: 'Poppins', 'Montserrat', sans-serif;
         }
 
-        /* Títulos */
-        QLabel#title_main {
-            color: #FFFFFF;
-            font-size: 24px;
-            font-weight: 700;
-        }
-        QLabel#subtitle {
-            color: #64748B;
-            font-size: 12px;
-            font-weight: 600;
-        }
+        QLabel#title_main { color: #FFFFFF; font-size: 24px; font-weight: 700; }
+        QLabel#subtitle   { color: #64748B; font-size: 12px; font-weight: 600; }
 
-        /* Textos Utilitários */
-        QLabel#txt_branca { color: #FFFFFF; font-size: 12px; }
-        QLabel#txt_branca_bold { color: #FFFFFF; font-size: 14px; font-weight: 700; }
-        QLabel#txt_cinza { color: #64748B; font-size: 12px; }
+        QLabel#txt_branca        { color: #FFFFFF; font-size: 12px; }
+        QLabel#txt_branca_bold   { color: #FFFFFF; font-size: 14px; font-weight: 700; }
+        QLabel#txt_cinza         { color: #64748B; font-size: 12px; }
         QLabel#txt_cinza_pequeno { color: #64748B; font-size: 11px; font-weight: 600; }
-        QLabel#txt_laranja { color: #F26522; font-size: 12px; font-weight: 600; }
-        QLabel#txt_laranja_bold { color: #F26522; font-size: 14px; font-weight: 700; }
+        QLabel#txt_laranja       { color: #F26522; font-size: 12px; font-weight: 600; }
+        QLabel#txt_laranja_bold  { color: #F26522; font-size: 14px; font-weight: 700; }
 
-        /* Inputs e Combobox (Barra de Filtro) */
         QLineEdit, QComboBox {
             background-color: #0B1120;
             border: 1px solid #1E293B;
@@ -267,14 +432,12 @@ class LaboratorioScreen(QWidget):
         QLineEdit:focus, QComboBox:focus { border: 1px solid #F26522; }
         QComboBox::drop-down { border: none; }
 
-        /* Card de Ordem de Serviço */
         QFrame#os_card {
             background-color: #0B1120;
             border: 1px solid #1E293B;
             border-radius: 12px;
         }
-        
-        /* Ícone quadrado do Card */
+
         QLabel#icone_card {
             background-color: #1E293B;
             border-radius: 8px;
@@ -282,37 +445,27 @@ class LaboratorioScreen(QWidget):
             font-size: 20px;
         }
 
-        /* Botões Transparentes (Três pontos) */
-        QPushButton#btn_transparente {
-            background-color: transparent;
-            color: #64748B;
-            border: none;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        QPushButton#btn_transparente:hover { color: #FFFFFF; }
-
-        /* Botões de Estágio (Mini botões dentro do card) */
         QPushButton#btn_estagio {
             background-color: #1E293B;
             color: #64748B;
             border: none;
             border-radius: 4px;
-            padding: 4px 8px;
+            padding: 4px 6px;
             font-size: 10px;
             font-weight: 600;
         }
+        QPushButton#btn_estagio:hover { background-color: #2c3b52; color: #FFFFFF; }
+
         QPushButton#btn_estagio_ativo {
             background-color: #0F172A;
             color: #4ADE80;
             border: 1px solid #4ADE80;
             border-radius: 4px;
-            padding: 4px 8px;
+            padding: 4px 6px;
             font-size: 10px;
             font-weight: 600;
         }
 
-        /* Botão Primário Laranja (+ Nova OS e Checkout) */
         QPushButton#btn_primario {
             background-color: #F26522;
             color: #FFFFFF;
@@ -324,202 +477,56 @@ class LaboratorioScreen(QWidget):
         }
         QPushButton#btn_primario:hover { background-color: #E05412; }
 
-        /* Scroll Area (Escondendo bordas) */
+        /* Botão 3 pontinhos */
+        QPushButton#btn_menu_card {
+            background-color: transparent;
+            color: #64748B;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 0px 4px;
+        }
+        QPushButton#btn_menu_card:hover {
+            color: #FFFFFF;
+            background-color: #1E293B;
+            border-radius: 4px;
+        }
+
+        /* Menu contextual */
+        QMenu#menu_card {
+            background-color: #0B1120;
+            color: #FFFFFF;
+            border: 1px solid #1E293B;
+            border-radius: 8px;
+            padding: 6px;
+        }
+        QMenu#menu_card::item {
+            background-color: transparent;
+            padding: 8px 18px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        QMenu#menu_card::item:selected {
+            background-color: #1E293B;
+            color: #F26522;
+        }
+        QMenu#menu_card::separator {
+            height: 1px;
+            background: #1E293B;
+            margin: 4px 0px;
+        }
+
         QScrollArea#scroll_area { border: none; background-color: transparent; }
-        QWidget#scroll_content { background-color: transparent; }
+        QWidget#scroll_content  { background-color: transparent; }
         QScrollBar:vertical { border: none; background-color: #0B1120; width: 8px; border-radius: 4px; }
         QScrollBar::handle:vertical { background-color: #1E293B; min-height: 20px; border-radius: 4px; }
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { border: none; background: none; }
-        """
-        self.setStyleSheet(estilo)
-
-# ======================================================================
-# MENU LATERAL E JANELA PRINCIPAL (comprimido)
-# ======================================================================
-class SidebarMenu(QWidget):
-    """Componente do Menu Lateral"""
-    def __init__(self, stacked_widget):
-        super().__init__()
-        self.stacked_widget = stacked_widget
-        self.initUI()
-
-    def initUI(self):
-        self.setFixedWidth(260)
-        self.setObjectName("sidebar")
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 30, 20, 30)
-        layout.setSpacing(10)
-
-        # --- Logo ---
-        lbl_logo = QLabel("📱 IFIX Pro")
-        lbl_logo.setObjectName("logo_title")
-        lbl_subtitle = QLabel("Manager")
-        lbl_subtitle.setObjectName("logo_subtitle")
-        
-        layout.addWidget(lbl_logo)
-        layout.addWidget(lbl_subtitle)
-        layout.addSpacing(30)
-
-        # --- Itens do Menu ---
-        self.botoes = []
-        itens_menu = [
-            ("⊞", "Dashboard"),
-            ("🔧", "Laboratório"),
-            ("🛒", "Vendas"),
-            ("👥", "Clientes"),
-            ("🛡️", "Garantias & RMA"),
-            ("🧮", "Orçamentos"),
-            ("📦", "Catálogo"),
-            ("🧑‍🔧", "Técnicos")
-        ]
-
-        for i, (icone, texto) in enumerate(itens_menu):
-            btn = QPushButton(f"{icone}   {texto}")
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setObjectName("menu_item")
-            
-            # Conecta o clique do botão à troca de tela
-            btn.clicked.connect(lambda checked, index=i: self.mudar_tela(index))
-            
-            layout.addWidget(btn)
-            self.botoes.append(btn)
-
-        # Define a primeira aba (Laboratório) como ativa
-        self.mudar_tela(1)
-
-        layout.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
-
-        # --- Rodapé ---
-        box_versao = QFrame()
-        box_versao.setObjectName("box_versao")
-        box_layout = QVBoxLayout(box_versao)
-        box_layout.addWidget(QLabel("Versão", objectName="lbl_versao_cinza"))
-        box_layout.addWidget(QLabel("IFIX Pro v2.0", objectName="lbl_versao_branca"))
-        layout.addWidget(box_versao)
-
-    def mudar_tela(self, index):
-        """Muda a tela no QStackedWidget e atualiza a cor do botão ativo"""
-        self.stacked_widget.setCurrentIndex(index)
-        
-        for i, btn in enumerate(self.botoes):
-            if i == index:
-                btn.setObjectName("menu_item_ativo")
-            else:
-                btn.setObjectName("menu_item")
-                
-        # Força a re-renderização do estilo (QSS)
-        self.setStyleSheet(self.styleSheet())
-
-
-class PlaceholderScreen(QWidget):
-    """Tela genérica para preencher os menus que ainda não codamos"""
-    def __init__(self, titulo):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        lbl = QLabel(titulo)
-        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setObjectName("title_main")
-        layout.addWidget(lbl)
-
-
-class MainWindow(QMainWindow):
-    """Janela Principal que une Sidebar e o Conteúdo"""
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("IFIX Pro Manager")
-        self.setMinimumSize(1200, 800)
-        
-        # Widget Central que segura o Layout Principal (Sidebar + Conteúdo)
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        # 1. Área de Conteúdo (Stacked Widget)
-        self.stacked_widget = QStackedWidget()
-        self.stacked_widget.setObjectName("content_area")
-        
-        # Adiciona as telas ao StackedWidget (A ordem importa!)
-        self.stacked_widget.addWidget(PlaceholderScreen("Dashboard"))          # Index 0
-        self.stacked_widget.addWidget(LaboratorioScreen())                    # Index 1 (Laboratório real)
-        self.stacked_widget.addWidget(PlaceholderScreen("Vendas"))            # Index 2
-        self.stacked_widget.addWidget(PlaceholderScreen("Clientes"))          # Index 3
-        self.stacked_widget.addWidget(PlaceholderScreen("Garantias & RMA"))   # Index 4
-        self.stacked_widget.addWidget(PlaceholderScreen("Orçamentos"))        # Index 5
-        self.stacked_widget.addWidget(PlaceholderScreen("Catálogo"))          # Index 6
-        self.stacked_widget.addWidget(PlaceholderScreen("Técnicos"))          # Index 7
-
-        # 2. Sidebar Lateral
-        self.sidebar = SidebarMenu(self.stacked_widget)
-
-        # Monta a estrutura final
-        main_layout.addWidget(self.sidebar)
-        main_layout.addWidget(self.stacked_widget)
-
-        self.aplicar_estilos_globais()
-
-    def aplicar_estilos_globais(self):
-        estilo = """
-        /* Fundo da Janela Principal */
-        QMainWindow, QWidget#content_area {
-            background-color: #0F172A;
-            font-family: 'Poppins', 'Montserrat', sans-serif;
-        }
-
-        /* Fundo da Sidebar (Tom mais escuro) */
-        QWidget#sidebar {
-            background-color: #0B1120;
-            border-right: 1px solid #1E293B;
-        }
-
-        /* Títulos Globais */
-        QLabel#title_main {
-            color: #FFFFFF;
-            font-size: 24px;
-            font-weight: 700;
-        }
-        QLabel#logo_title { color: #FFFFFF; font-size: 22px; font-weight: 700; }
-        QLabel#logo_subtitle { color: #64748B; font-size: 12px; font-weight: 600; margin-left: 32px; margin-top: -5px;}
-
-        /* Botões do Menu Lateral */
-        QPushButton#menu_item {
-            background-color: transparent;
-            color: #64748B;
-            font-size: 14px;
-            font-weight: 600;
-            text-align: left;
-            padding: 12px 15px;
-            border-radius: 8px;
-            border: none;
-        }
-        QPushButton#menu_item:hover {
-            background-color: #1E293B;
-            color: #FFFFFF;
-        }
-        QPushButton#menu_item_ativo {
-            background-color: #0F172A; /* Mesma cor do conteúdo principal */
-            color: #F26522; /* Laranja */
-            font-size: 14px;
-            font-weight: 700;
-            text-align: left;
-            padding: 12px 15px;
-            border-radius: 8px;
-            border: 1px solid #1E293B;
-        }
-
-        /* Rodapé da Versão */
-        QFrame#box_versao { background-color: #0F172A; border-radius: 10px; }
-        QLabel#lbl_versao_cinza { color: #64748B; font-size: 11px; }
-        QLabel#lbl_versao_branca { color: #FFFFFF; font-size: 13px; font-weight: 700; }
-        """
-        self.setStyleSheet(estilo)
+        """)
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+    w = LaboratorioScreen()
+    w.show()
+    import sys as _sys
+    _sys.exit(app.exec())

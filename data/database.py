@@ -318,9 +318,13 @@ def atualizar_tecnico(tecnico_id, nome, telefone, especialidade):
     return obter_tecnico(tecnico_id)
 # exclui um técnico do banco de dados com base no ID fornecido
 def excluir_tecnico(tecnico_id):
-    with get_db_connection() as conn:
-        conn.execute("DELETE FROM tecnicos WHERE id = ?", (tecnico_id,))
-        conn.commit()
+    try:
+        with get_db_connection() as conn:
+            conn.execute("DELETE FROM tecnicos WHERE id = ?", (tecnico_id,))
+            conn.commit()
+            return True
+    except sqlite3.IntegrityError:
+        return False
 #========================================================================================================================================
 # funçoes de dados da pagina catalogo
 #========================================================================================================================================
@@ -717,6 +721,18 @@ def inicializar_banco_vendas():
         cursor = conn.cursor()
 
         cursor.execute("""
+            CREATE TABLE IF NOT EXISTS venda_itens (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                venda_id         INTEGER NOT NULL,
+                produto_id       INTEGER NOT NULL,
+                nome_snapshot    TEXT    NOT NULL,
+                quantidade       INTEGER NOT NULL DEFAULT 1,
+                preco_unitario   REAL    NOT NULL,
+                subtotal         REAL    NOT NULL
+            )
+        """)
+
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS vendas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cliente_id INTEGER,
@@ -798,6 +814,77 @@ def registrar_venda(cliente_id, produto_id, celular_id, servico_id, desconto,
 
         conn.commit()
         return venda_id
+
+
+def registrar_venda_pdv(itens: list, forma_pagamento: str,
+                        parcelamento: str = "À vista",
+                        cliente_id=None) -> int:
+    """
+    Registra uma venda com múltiplos itens (PDV).
+
+    itens: lista de dicts com {id, nome, preco, qtd}
+    Retorna o id da venda criada.
+    """
+    if not itens:
+        raise ValueError("Carrinho vazio.")
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Valida estoque antes de qualquer INSERT
+        for item in itens:
+            cursor.execute("SELECT nome, estoque FROM produtos WHERE id = ?", (item["id"],))
+            row = cursor.fetchone()
+            if not row:
+                raise ValueError(f"Produto id={item['id']} não encontrado.")
+            if row["estoque"] < item["qtd"]:
+                raise ValueError(
+                    f"Estoque insuficiente para '{row['nome']}': "
+                    f"disponível {row['estoque']}, solicitado {item['qtd']}."
+                )
+
+        total = sum(float(i["preco"]) * int(i["qtd"]) for i in itens)
+
+        cursor.execute("""
+            INSERT INTO vendas (cliente_id, data_venda, forma_pagamento,
+                                parcelamento, valor_total)
+            VALUES (?, ?, ?, ?, ?)
+        """, (cliente_id, date.today().isoformat(),
+              forma_pagamento, parcelamento, total))
+
+        venda_id = cursor.lastrowid
+
+        for item in itens:
+            subtotal = float(item["preco"]) * int(item["qtd"])
+            cursor.execute("""
+                INSERT INTO venda_itens
+                    (venda_id, produto_id, nome_snapshot, quantidade,
+                     preco_unitario, subtotal)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (venda_id, item["id"], item["nome"],
+                  item["qtd"], float(item["preco"]), subtotal))
+
+            cursor.execute(
+                "UPDATE produtos SET estoque = estoque - ? WHERE id = ?",
+                (item["qtd"], item["id"])
+            )
+
+        conn.commit()
+        return venda_id
+
+
+def obter_itens_venda(venda_id: int) -> list:
+    """Retorna os itens de uma venda do PDV."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT nome_snapshot AS nome, quantidade AS qtd,
+                   preco_unitario AS preco, subtotal
+            FROM venda_itens WHERE venda_id = ? ORDER BY id
+        """, (venda_id,))
+        return [dict(r) for r in cursor.fetchall()]
+
+
 # Função para pesquisar vendas com base em um critério e valor específico
 def pesquisar_vendas(criterio, valor):
     campos_permitidos = {
@@ -1153,6 +1240,74 @@ def excluir_ordem_servico(ordem_servico_id):
         return cursor.rowcount > 0
 
 
+def listar_ordens_servico(filtro: str = "", status: str = None) -> list:
+    """
+    Retorna lista de OS com JOIN em clientes e tecnicos.
+    - filtro: busca livre em nome do cliente, modelo ou ID da OS
+    - status: filtra pelo campo status (ex: 'aberta', 'pronto'); None = todos
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        params = []
+        where = "WHERE 1=1"
+
+        if status and status != "Todos os Status":
+            where += " AND os.status = ?"
+            params.append(status)
+
+        if filtro:
+            like = f"%{filtro}%"
+            where += " AND (c.nome LIKE ? OR os.modelo LIKE ? OR CAST(os.id AS TEXT) LIKE ?)"
+            params.extend([like, like, like])
+
+        cursor.execute(f"""
+            SELECT
+                os.id,
+                os.modelo,
+                os.cor,
+                os.status,
+                os.prioridade,
+                os.relato,
+                os.data_cadastro,
+                os.tecnico_id,
+                c.nome     AS cliente_nome,
+                c.telefone AS cliente_telefone,
+                t.nome     AS tecnico_nome
+            FROM ordem_servico os
+            LEFT JOIN clientes c ON c.id = os.cliente_id
+            LEFT JOIN tecnicos t ON t.id = os.tecnico_id
+            {where}
+            ORDER BY os.data_cadastro DESC
+        """, params)
+        ordens = [dict(row) for row in cursor.fetchall()]
+
+        for ordem in ordens:
+            cursor.execute("""
+                SELECT
+                    nome_servico_snapshot  AS nome,
+                    preco_servico_snapshot AS preco
+                FROM ordem_servico_servicos
+                WHERE ordem_servico_id = ?
+                ORDER BY id
+            """, (ordem["id"],))
+            servicos = [dict(r) for r in cursor.fetchall()]
+            ordem["servicos"] = servicos
+            ordem["total_servicos"] = sum(float(s.get("preco") or 0) for s in servicos)
+
+        return ordens
+
+
+def atualizar_status_ordem(ordem_id: int, novo_status: str) -> bool:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE ordem_servico SET status = ? WHERE id = ?",
+            (novo_status, ordem_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
 # ======================================================================
 # ORDEM DE SERVIÇO -> SERVIÇOS (LISTA DE IDS)
 # ======================================================================
@@ -1191,6 +1346,17 @@ def obter_servicos_da_ordem(ordem_servico_id):
             ORDER BY id
         """, (ordem_servico_id,))
         return [dict(row) for row in cursor.fetchall()]
+
+
+def remover_servicos_da_ordem(ordem_servico_id: int):
+    """Remove todos os serviços vinculados a uma OS (usado antes de re-salvar)."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM ordem_servico_servicos WHERE ordem_servico_id = ?",
+            (ordem_servico_id,)
+        )
+        conn.commit()
 
 
 def vincular_servicos_na_ordem(ordem_servico_id, servico_ids):

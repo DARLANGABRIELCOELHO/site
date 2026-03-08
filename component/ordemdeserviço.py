@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame, QCheckBox,
     QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QScrollArea,
-    QButtonGroup, QComboBox, QTabWidget
+    QButtonGroup, QComboBox, QTabWidget, QCompleter
 )
 from PyQt6.QtCore import Qt
 
@@ -265,8 +265,11 @@ class AbaAparelho(QWidget):
         grid.setSpacing(15)
 
         grid.addWidget(QLabel("Modelo do Aparelho *"), 0, 0)
-        self.edit_modelo = QLineEdit()
-        self.edit_modelo.setPlaceholderText("Ex: iPhone 13 Pro Max")
+        self.edit_modelo = QComboBox()
+        self.edit_modelo.setEditable(True)
+        self.edit_modelo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.edit_modelo.lineEdit().setPlaceholderText("Ex: iPhone 13 Pro Max")
+        self._carregar_modelos()
         grid.addWidget(self.edit_modelo, 1, 0)
 
         grid.addWidget(QLabel("Cor"), 0, 1)
@@ -336,6 +339,46 @@ class AbaAparelho(QWidget):
         self.txt_relato = QTextEdit()
         self.txt_relato.setPlaceholderText("Descreva o problema relatado pelo cliente...")
         layout.addWidget(self.txt_relato)
+
+    def _carregar_modelos(self):
+        modelos = []
+        try:
+            with db.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT DISTINCT modelo || ' (' || marca || ')' AS label, modelo "
+                    "FROM celulares ORDER BY modelo"
+                )
+                for row in cursor.fetchall():
+                    self.edit_modelo.addItem(row["label"], row["modelo"])
+                    modelos.append(row["label"])
+        except Exception:
+            pass
+
+        # Também inclui modelos já usados em ordens de serviço (histórico)
+        try:
+            with db.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT DISTINCT modelo FROM ordem_servico ORDER BY modelo"
+                )
+                for row in cursor.fetchall():
+                    m = row["modelo"]
+                    if m and m not in modelos:
+                        self.edit_modelo.addItem(m)
+                        modelos.append(m)
+        except Exception:
+            pass
+
+        # Autocomplete
+        completer = QCompleter(modelos, self.edit_modelo)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.edit_modelo.setCompleter(completer)
+
+        # Começa vazio
+        self.edit_modelo.setCurrentIndex(-1)
+        self.edit_modelo.lineEdit().clear()
 
 
 class AbaChecklist(QWidget):
@@ -515,7 +558,7 @@ class NovaOrdemServicoWindow(QDialog):
         self.tab_widget.addTab(self.aba_checklist, "📋 Checklist")
         self.tab_widget.addTab(self.aba_servicos, "🔧 Serviços")
 
-        self.aba_aparelho.edit_modelo.textChanged.connect(self.atualizar_servicos_por_modelo)
+        self.aba_aparelho.edit_modelo.currentTextChanged.connect(self.atualizar_servicos_por_modelo)
 
         main_layout.addWidget(self.tab_widget)
 
@@ -546,7 +589,7 @@ class NovaOrdemServicoWindow(QDialog):
         self.apply_styles()
 
     def atualizar_servicos_por_modelo(self):
-        modelo = self.aba_aparelho.edit_modelo.text().strip()
+        modelo = self.aba_aparelho.edit_modelo.currentText().strip()
         self.aba_servicos.carregar_servicos(modelo if modelo else None)
 
     def criar_os(self):
@@ -564,7 +607,7 @@ class NovaOrdemServicoWindow(QDialog):
             # -------------------------
             # APARELHO
             # -------------------------
-            modelo = self.aba_aparelho.edit_modelo.text().strip()
+            modelo = self.aba_aparelho.edit_modelo.currentText().strip()
             cor = self.aba_aparelho.edit_cor.text().strip()
             senha = self.aba_aparelho.edit_senha.text().strip()
             imei = self.aba_aparelho.edit_imei.text().strip()
