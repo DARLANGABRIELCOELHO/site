@@ -1,11 +1,23 @@
 import sys
 import os
+import ctypes
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+# ID único do app para o Windows agrupar e exibir o ícone corretamente na barra de tarefas
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ifix.sistema.desktop")
 
 # Garante que o diretório raiz está no path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -36,6 +48,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("IFIX Pro Manager")
+        self.setWindowIcon(QIcon(resource_path("logo.ico")))
         self.setMinimumSize(1280, 800)
 
         central = QWidget()
@@ -72,7 +85,27 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+    try:
+        app = QApplication(sys.argv)
+        app.setWindowIcon(QIcon(resource_path("logo.ico")))
+        window = MainWindow()
+        window.show()
+        sys.exit(app.exec())
+    except Exception as e:
+        import traceback
+        import pathlib
+        crash_file = pathlib.Path(os.getenv("LOCALAPPDATA", str(pathlib.Path.home()))) / "iFix" / "crash.txt"
+        crash_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(crash_file, "w") as f:
+            f.write(traceback.format_exc())
+            f.write(f"\n{e}")
+        from PyQt6.QtWidgets import QMessageBox
+        # Fallback raw message box 
+        # Needs active application or QApplication.instance()
+        if not QApplication.instance():
+            _app = QApplication(sys.argv)
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Icon.Critical)
+        msg.setText("Erro fatal:")
+        msg.setDetailedText(traceback.format_exc())
+        msg.exec()

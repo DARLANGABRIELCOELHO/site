@@ -1,20 +1,43 @@
 @echo off
+chcp 65001 >nul
+setlocal
+
 if not exist ".\.venv\Scripts\activate.bat" (
-    echo "Virtual environment not found! Please create it and run: pip install -r requirements.txt"
+    echo Virtual environment not found.
+    echo Create it and install dependencies with:
+    echo python -m venv .venv
+    echo .\.venv\Scripts\activate
+    echo pip install -r requirements.txt
     pause
     exit /b 1
 )
 
 call .\.venv\Scripts\activate.bat
 
-echo "Building executable with PyInstaller..."
-pyinstaller ^
+python -m PyInstaller --version >nul 2>&1
+if errorlevel 1 (
+    echo PyInstaller is not installed in the virtual environment.
+    echo Run:
+    echo pip install pyinstaller
+    pause
+    exit /b 1
+)
+
+echo Cleaning old build folders...
+if exist build rmdir /s /q build
+if exist dist rmdir /s /q dist
+if exist iFix.spec del /f /q iFix.spec
+
+echo Building executable with PyInstaller...
+
+python -m PyInstaller ^
   --noconfirm ^
   --clean ^
   --windowed ^
   --onedir ^
   --name iFix ^
   --icon=logo.ico ^
+  --add-data "logo.ico;." ^
   --add-data "logo.png;." ^
   --add-data "data\ifix.db;data" ^
   --hidden-import pages.dashboard ^
@@ -26,12 +49,20 @@ pyinstaller ^
   --hidden-import pages.catalogo ^
   --hidden-import component.sidebar ^
   --hidden-import component.vizualizarcliente ^
-  --hidden-import component.ordemdeserviço ^
+  --hidden-import component.ordemdeservico ^
   --hidden-import component.novavenda ^
   --hidden-import component.novocliente ^
   --hidden-import component.novotecnico ^
   --hidden-import component.notas ^
   app.py
 
-echo "Build complete. Check the 'dist/iFix' folder."
+if errorlevel 1 (
+    echo.
+    echo Build failed.
+    pause
+    exit /b 1
+)
+
+echo.
+echo Build complete. Check the folder: dist\iFix
 pause
