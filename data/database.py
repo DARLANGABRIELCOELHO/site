@@ -18,6 +18,7 @@ def inicializar_estado():
     inicializar_banco_produtos()
     inicializar_banco_celulares()
     inicializar_banco_servicos()
+    inicializar_banco_vendas()
 
 
 # ======================================================================
@@ -439,14 +440,14 @@ def inicializar_banco_servicos():
             ))
 
         conn.commit()
-
+# FUNÇÃO PARA OBTER O PROXIMO ID DISPONÍVEL PARA SERVIÇOS
 def obter_servicos():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM servicos")
         resultados = cursor.fetchall()
     return [dict(row) for row in resultados]
-
+# obtém um serviço pelo ID, retornando um dicionário com os dados ou None se não encontrado
 def obter_servico(servico_id):
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -535,21 +536,147 @@ def excluir_servico(servico_id):
 #========================================================================================================================================
 # funçoes de dados da pagina vendas
 #========================================================================================================================================
-def vendas():
-    return [
-        {"id": 1, 
-        "cliente_id": 1,
-        "produto_id": 1,
-        "celular_id": 1,
-        "servico_id": 1,
-        "data_venda": "2023-06-01",
-        "desconto": 10.0,
-        "forma_pagamento": "cartão de crédito",
-        "parcelamento": "3x",
-        "observacao": "Venda realizada com sucesso",
-        "garantia": "90 dias",
-        "valor_total": 500.0}
-        ]
+# Constantes para os campos da tabela vendas
+VENDAS_ID = "id"
+VENDAS_CLIENTE_ID = "cliente_id"
+VENDAS_PRODUTO_ID = "produto_id"
+VENDAS_CELULAR_ID = "celular_id"
+VENDAS_SERVICO_ID = "servico_id"
+VENDAS_DATA_VENDA = "data_venda"
+VENDAS_DESCONTO = "desconto"
+VENDAS_FORMA_PAGAMENTO = "forma_pagamento"
+VENDAS_PARCELAMENTO = "parcelamento"
+VENDAS_OBSERVACAO = "observacao"
+VENDAS_GARANTIA = "garantia"
+VENDAS_VALOR_TOTAL = "valor_total"
+# Função para criar a tabela de vendas e inserir um registro de teste
+def inicializar_banco_vendas():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS vendas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cliente_id INTEGER,
+                produto_id INTEGER,
+                celular_id INTEGER,
+                servico_id INTEGER,
+                data_venda TEXT,
+                desconto REAL,
+                forma_pagamento TEXT,
+                parcelamento TEXT,
+                observacao TEXT,
+                garantia TEXT,
+                valor_total REAL
+            )
+        """)
+
+        cursor.execute("SELECT COUNT(*) FROM vendas")
+        total_vendas = cursor.fetchone()[0]
+
+        if total_vendas == 0:
+            cursor.execute("""
+                INSERT INTO vendas (
+                    cliente_id, produto_id, celular_id, servico_id,
+                    data_venda, desconto, forma_pagamento,
+                    parcelamento, observacao, garantia, valor_total
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                1, 1, 1, 1,
+                "2023-06-01", 10.0, "cartão de crédito",
+                "3x", "Venda realizada com sucesso", "90 dias", 500.0
+            ))
+
+        conn.commit()
+# Função para obter o próximo ID disponível para vendas
+def obter_proximo_id_vendas():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(id) FROM vendas")
+        resultado = cursor.fetchone()
+        return resultado[0] + 1 if resultado[0] is not None else 1
+# Função para registrar uma nova venda, atualizando o estoque do produto se aplicável
+def registrar_venda(cliente_id, produto_id, celular_id, servico_id, desconto,
+                    forma_pagamento, parcelamento, observacao, garantia, valor_total):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        data_venda = date.today().isoformat()
+
+        if produto_id is not None:
+            cursor.execute("SELECT estoque FROM produtos WHERE id = ?", (produto_id,))
+            produto = cursor.fetchone()
+
+            if not produto:
+                raise ValueError("Produto não encontrado.")
+
+            if produto["estoque"] <= 0:
+                raise ValueError("Estoque insuficiente para concluir a venda.")
+
+        cursor.execute("""
+            INSERT INTO vendas (
+                cliente_id, produto_id, celular_id, servico_id,
+                data_venda, desconto, forma_pagamento,
+                parcelamento, observacao, garantia, valor_total
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            cliente_id, produto_id, celular_id, servico_id,
+            data_venda, desconto, forma_pagamento,
+            parcelamento, observacao, garantia, valor_total
+        ))
+
+        venda_id = cursor.lastrowid
+
+        if produto_id is not None:
+            cursor.execute(
+                "UPDATE produtos SET estoque = estoque - 1 WHERE id = ?",
+                (produto_id,)
+            )
+
+        conn.commit()
+        return venda_id
+# Função para pesquisar vendas com base em um critério e valor específico
+def pesquisar_vendas(criterio, valor):
+    campos_permitidos = {
+        "cliente_id",
+        "produto_id",
+        "celular_id",
+        "servico_id",
+        "forma_pagamento",
+        "data_venda"
+    }
+
+    if criterio not in campos_permitidos:
+        raise ValueError("Critério de pesquisa inválido.")
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        query = f"SELECT * FROM vendas WHERE {criterio} = ?"
+        cursor.execute(query, (valor,))
+        resultados = cursor.fetchall()
+
+    return [dict(row) for row in resultados]
+# Função para excluir uma venda, restaurando o estoque do produto se aplicável
+def excluir_venda(venda_id):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT produto_id FROM vendas WHERE id = ?", (venda_id,))
+        resultado = cursor.fetchone()
+
+        if resultado:
+            produto_id = resultado["produto_id"]
+
+            cursor.execute("DELETE FROM vendas WHERE id = ?", (venda_id,))
+
+            if produto_id is not None:
+                cursor.execute(
+                    "UPDATE produtos SET estoque = estoque + 1 WHERE id = ?",
+                    (produto_id,)
+                )
+
+            conn.commit()
 #========================================================================================================================================
 # funçoes de dados da pagina laboratorio/garantia
 #========================================================================================================================================

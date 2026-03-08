@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import date
 import sqlite3
 import os
 
@@ -16,129 +16,227 @@ def inicializar_estado():
     inicializar_banco_produtos()
     inicializar_banco_celulares()
     inicializar_banco_servicos()
-
-# -----------------------------------------------------------------------------
-# SERVIÇOS
-# -----------------------------------------------------------------------------
-# CHAVE DE DADOS PARA SERVIÇOS
-SERVICO_ID = "id"
-SERVICO_NOME = "nome"
-SERVICO_MODELO_CELULAR = "modelo_celular"
-SERVICO_CATEGORIA = "categoria"
-SERVICO_CUSTOS = "custos"
-SERVICO_PRECO = "preco"
-SERVICO_TEMPO_ESTIMADO = "tempo_estimado"
-SERVICO_OBSERVACAO = "observacao"
-SERVICO_DATA_CADASTRO = "data_cadastro"
-# INICIALIZAÇÃO DO BANCO DE DADOS PARA SERVIÇOS
-def inicializar_banco_servicos():
+    inicializar_banco_vendas()
+#=====================================================================
+# ordem de serviço
+#=====================================================================
+# Constantes para os campos da tabela ordem_servico
+ORDEM_SERVICO_ID = "id"
+ORDEM_SERVICO_TECNICO_ID = "tecnico_id"
+ORDEM_SERVICO_STATUS = "status"
+ORDEM_SERVICO_CLIENTE_ID = "cliente_id"
+ORDEM_SERVICO_IMEI = "imei"
+ORDEM_SERVICO_SENHA = "senha"
+ORDEM_SERVICO_CONDICAO_ENTRADA = "condicao_entrada"
+ORDEM_SERVICO_RELATO_CLIENTE = "relato_cliente"
+ORDEM_SERVICO_OBSERVACAO_ENTRADA = "observacao_entrada"
+ORDEM_SERVICO_CHECKLIST_ENTRADA = "checklist_entrada"
+ORDEM_SERVICO_OBSERVACAO_SAIDA = "observacao_saida"
+ORDEM_SERVICO_CHECKLIST_SAIDA = "checklist_saida"
+ORDEM_SERVICO_COR = "cor"
+ORDEM_SERVICO_MARCA = "marca"
+ORDEM_SERVICO_MODELO = "modelo"
+ORDEM_SERVICO_SERVICO_ID = "servico_id"
+ORDEM_SERVICO_DATA_ENTRADA = "data_entrada"
+ORDEM_SERVICO_DATA_SAIDA = "data_saida"
+ORDEM_SERVICO_DESCONTO = "desconto"
+ORDEM_SERVICO_FORMA_PAGAMENTO = "forma_pagamento"
+ORDEM_SERVICO_PARCELAMENTO = "parcelamento"
+ORDEM_SERVICO_LAUDO_TECNICO = "laudo_tecnico"
+ORDEM_SERVICO_GARANTIA = "garantia"
+ORDEM_SERVICO_VALOR_TOTAL = "valor_total"
+# Função para criar a tabela de vendas e inserir um registro de teste
+def inicializar_banco_ordem_servico():
     with get_db_connection() as conn:
         cursor = conn.cursor()
+
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS servicos (
+            CREATE TABLE IF NOT EXISTS ordem_servico (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                modelo_celular TEXT,
-                categoria TEXT,
-                custos REAL,
-                preco REAL,
-                tempo_estimado TEXT,
+                tecnico_id INTEGER,
+                status TEXT,
+                cliente_id INTEGER,
+                imei TEXT,
+                senha TEXT,
+                condicao_entrada TEXT,
+                relato_cliente TEXT,
+                observacao_entrada TEXT,
+                checklist_entrada TEXT,
+                observacao_saida TEXT,
+                checklist_saida TEXT,
+                cor TEXT,
+                marca TEXT,
+                modelo TEXT,
+                servico_id INTEGER,
+                data_entrada TEXT,
+                data_saida TEXT,
+                desconto REAL,
+                forma_pagamento TEXT,
+                parcelamento TEXT,
                 observacao TEXT,
-                data_cadastro TEXT
+                garantia TEXT,
+                valor_total REAL
             )
         """)
 
-        cursor.execute("SELECT COUNT(*) FROM servicos")
-        total = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM ordem_servico")
+        total_ordem_servico = cursor.fetchone()[0]
 
-        if total == 0:
+        if total_ordem_servico == 0:
             cursor.execute("""
-                INSERT INTO servicos (
-                    nome, modelo_celular, categoria, custos, preco,
-                    tempo_estimado, observacao, data_cadastro
+                INSERT INTO ordem_servico (
+                    tecnico_id, status, cliente_id, imei, senha, condicao_entrada, 
+                    relato_cliente, observacao_entrada, checklist_entrada, observacao_saida, 
+                    checklist_saida, cor, marca, modelo, servico_id, data_entrada, 
+                    data_saida, desconto, forma_pagamento, parcelamento, laudo_tecnico, 
+                    garantia, valor_total
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                "Serviço A",
-                "Celular A",
-                "Reparo de tela",
-                50.0,
-                100.0,
-                "2 horas",
-                "Garantia de 3 meses",
-                "2023-05-01"
+                1, 1, 1, 1,
+                "2023-06-01", 10.0, "cartão de crédito",
+                "3x", "Venda realizada com sucesso", "90 dias", 500.0
             ))
 
         conn.commit()
+# Função para obter o próximo ID disponível para ordem de serviço
+def obter_proximo_id_ordem_servico():   
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(id) FROM ordem_servico")
+        resultado = cursor.fetchone()
+        return resultado[0] + 1 if resultado[0] is not None else 1
+# Função para registrar uma nova ordem de serviço
+def registrar_ordem_servico(tecnico_id, status, cliente_id, imei, senha, condicao_entrada, 
+                    relato_cliente, observacao_entrada, checklist_entrada, observacao_saida, 
+                    checklist_saida, cor, marca, modelo, servico_id, data_entrada, 
+                    data_saida, desconto, forma_pagamento, parcelamento, laudo_tecnico, 
+                    garantia, valor_total):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        data_entrada = date.today().isoformat()
 
-def obter_servicos():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM servicos")
-        resultados = cursor.fetchall()
-    return [dict(row) for row in resultados]
+        if servico_id is not None:
+            cursor.execute("SELECT estoque FROM servicos WHERE id = ?", (servico_id,))
+            servico = cursor.fetchone()
 
-def obter_servico(servico_id):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM servicos WHERE id = ?", (servico_id,))
-        row = cursor.fetchone()
-    return dict(row) if row else None
-# INSERÇÃO DE SERVIÇOS
-def inserir_servico(nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
+            if not servico:
+                raise ValueError("Serviço não encontrado.")
+
+            if servico["estoque"] <= 0:
+                raise ValueError("Estoque insuficiente para concluir a venda.")
+
         cursor.execute("""
-            INSERT INTO servicos (
-                nome, modelo_celular, categoria, custos, preco,
-                tempo_estimado, observacao, data_cadastro
+            INSERT INTO ordem_servico (
+                tecnico_id, status, cliente_id, imei, senha, condicao_entrada, 
+                relato_cliente, observacao_entrada, checklist_entrada, observacao_saida, 
+                checklist_saida, cor, marca, modelo, servico_id, data_entrada, 
+                data_saida, desconto, forma_pagamento,
+                parcelamento, observacao, garantia, valor_total
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            tecnico_id, status, cliente_id, imei, senha, condicao_entrada, 
+            relato_cliente, observacao_entrada, checklist_entrada, observacao_saida, 
+            checklist_saida, cor, marca, modelo, servico_id,
+            data_entrada, data_saida, desconto, forma_pagamento,
+            parcelamento, observacao, garantia, valor_total
+        ))
+
+        ordem_servico_id = cursor.lastrowid
+
+        if servico_id is not None:
+            cursor.execute(
+                "UPDATE servicos SET estoque = estoque - 1 WHERE id = ?",
+                (servico_id,)
+            )
+
         conn.commit()
-        novo_id = cursor.lastrowid
-    return obter_servico(novo_id)
-# ATUALIZAÇÃO DE SERVIÇOS
-def atualizar_servico(servico_id, nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro):
+        return ordem_servico_id
+# função atualizar ordem de serviço
+def atualizar_ordem_servico(ordem_servico_id, tecnico_id, status, cliente_id, imei, senha, condicao_entrada, 
+                    relato_cliente, observacao_entrada, checklist_entrada, observacao_saida, 
+                    checklist_saida, cor, marca, modelo, servico_id, data_entrada, 
+                    data_saida, desconto, forma_pagamento,
+                    parcelamento, observacao, garantia, valor_total):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE servicos
-            SET nome = ?, modelo_celular = ?, categoria = ?, custos = ?, preco = ?,
-                tempo_estimado = ?, observacao = ?, data_cadastro = ?
+            UPDATE ordem_servico SET
+                tecnico_id = ?,
+                status = ?,
+                cliente_id = ?,
+                imei = ?,
+                senha = ?,
+                condicao_entrada = ?,
+                relato_cliente = ?,
+                observacao_entrada = ?,
+                checklist_entrada = ?,
+                observacao_saida = ?,
+                checklist_saida = ?,
+                cor = ?,
+                marca = ?,
+                modelo = ?,
+                servico_id = ?,
+                data_entrada = ?,
+                data_saida = ?,
+                desconto = ?,
+                forma_pagamento = ?,
+                parcelamento = ?,
+                observacao = ?,
+                garantia = ?,
+                valor_total = ?
             WHERE id = ?
-        """, (nome, modelo_celular, categoria, custos, preco, tempo_estimado, observacao, data_cadastro, servico_id))
-        conn.commit()
-    return obter_servico(servico_id)
-# PESQUISA DE SERVIÇOS 
-def obter_modelos_distintos(termo=""):
+        """, (
+            tecnico_id, status, cliente_id, imei, senha, condicao_entrada, 
+            relato_cliente, observacao_entrada, checklist_entrada, observacao_saida, 
+            checklist_saida, cor, marca, modelo, servico_id,
+            data_entrada, data_saida, desconto, forma_pagamento,
+            parcelamento, observacao, garantia, valor_total, ordem_servico_id
+        ))
+        conn.commit()   
+# Função para pesquisar ordem de serviço com base em um critério e valor específico
+def pesquisar_ordem_servico(criterio, valor):
+    campos_permitidos = {
+        "cliente_id",
+        "servico_id",
+        "forma_pagamento",
+        "data_entrada",
+        "data_saida",
+        "desconto",
+        "parcelamento",
+        "observacao",
+        "garantia",
+        "valor_total"
+    }
+
+    if criterio not in campos_permitidos:
+        raise ValueError("Critério de pesquisa inválido.")
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        if termo:
-            cursor.execute(
-                "SELECT DISTINCT modelo_celular FROM servicos WHERE modelo_celular LIKE ? ORDER BY modelo_celular",
-                (f"%{termo}%",)
-            )
-        else:
-            cursor.execute("SELECT DISTINCT modelo_celular FROM servicos ORDER BY modelo_celular")
+        query = f"SELECT * FROM ordem_servico WHERE {criterio} = ?"
+        cursor.execute(query, (valor,))
         resultados = cursor.fetchall()
-    return [row["modelo_celular"] for row in resultados if row["modelo_celular"]]
-# pesquisa de categorias distintas para preenchimento automático do campo de categoria
-def obter_categorias_distintas(termo=""):
+
+    return [dict(row) for row in resultados]
+# Função para excluir uma ordem de serviço
+def excluir_ordem_servico(ordem_servico_id):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        if termo:
-            cursor.execute(
-                "SELECT DISTINCT categoria FROM servicos WHERE categoria LIKE ? ORDER BY categoria",
-                (f"%{termo}%",)
-            )
-        else:
-            cursor.execute("SELECT DISTINCT categoria FROM servicos ORDER BY categoria")
-        resultados = cursor.fetchall()
-    return [row["categoria"] for row in resultados if row["categoria"]]
-# EXCLUSÃO DE SERVIÇOS
-def excluir_servico(servico_id):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM servicos WHERE id = ?", (servico_id,))
-        conn.commit()
+
+        cursor.execute("SELECT servico_id FROM ordem_servico WHERE id = ?", (ordem_servico_id,))
+        resultado = cursor.fetchone()
+
+        if resultado:
+            servico_id = resultado["servico_id"]
+
+            cursor.execute("DELETE FROM ordem_servico WHERE id = ?", (ordem_servico_id,))
+
+            if servico_id is not None:
+                cursor.execute(
+                    "UPDATE servicos SET estoque = estoque + 1 WHERE id = ?",
+                    (servico_id,)
+                )
+
+            conn.commit()
