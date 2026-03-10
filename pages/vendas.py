@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QFrame, QSpacerItem, QSizePolicy,
     QScrollArea, QComboBox, QMessageBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon, QAction
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
@@ -187,7 +188,12 @@ class VendasScreen(QWidget):
         titulos.addWidget(lbl_titulo)
         titulos.addWidget(lbl_sub)
 
-        self.btn_finalizar_topo = QPushButton("🛒 Finalizar (0)")
+        self.btn_finalizar_topo = QPushButton("Finalizar (0)")
+        if _SVG_OK:
+            self.btn_finalizar_topo.setIcon(QIcon(svg_para_pixmap("fi-sr-shopping-cart.svg", "#FFFFFF", 16, 16)))
+            self.btn_finalizar_topo.setIconSize(QSize(16, 16))
+        else:
+            self.btn_finalizar_topo.setText("🛒 Finalizar (0)")
         self.btn_finalizar_topo.setObjectName("btn_primario")
         self.btn_finalizar_topo.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_finalizar_topo.clicked.connect(self._finalizar_venda)
@@ -198,7 +204,13 @@ class VendasScreen(QWidget):
         left_layout.addLayout(header)
 
         self.edit_busca = QLineEdit()
-        self.edit_busca.setPlaceholderText("🔍 Buscar produto...")
+        self.edit_busca.setPlaceholderText("Buscar produto...")
+        if _SVG_OK:
+            search_action = QAction(
+                QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 16, 16)), "",
+                self.edit_busca
+            )
+            self.edit_busca.addAction(search_action, QLineEdit.ActionPosition.LeadingPosition)
         self.edit_busca.textChanged.connect(self._carregar_produtos)
         left_layout.addWidget(self.edit_busca)
 
@@ -221,9 +233,19 @@ class VendasScreen(QWidget):
         self.cart_layout = QVBoxLayout(self.cart_frame)
         self.cart_layout.setContentsMargins(20, 20, 20, 20)
 
-        lbl_carrinho_titulo = QLabel("🛒 Carrinho")
+        # Título do carrinho com SVG
+        cart_titulo_row = QHBoxLayout()
+        cart_titulo_row.setSpacing(8)
+        cart_titulo_row.setContentsMargins(0, 0, 0, 0)
+        if _SVG_OK:
+            ico_cart = QLabel()
+            ico_cart.setPixmap(svg_para_pixmap("fi-sr-shopping-cart.svg", "#F26522", 18, 18))
+            cart_titulo_row.addWidget(ico_cart)
+        lbl_carrinho_titulo = QLabel("Carrinho")
         lbl_carrinho_titulo.setObjectName("txt_branca_bold")
-        self.cart_layout.addWidget(lbl_carrinho_titulo)
+        cart_titulo_row.addWidget(lbl_carrinho_titulo)
+        cart_titulo_row.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        self.cart_layout.addLayout(cart_titulo_row)
         self.cart_layout.addSpacing(10)
 
         self.cart_items_area = QVBoxLayout()
@@ -251,7 +273,12 @@ class VendasScreen(QWidget):
         self.lbl_total_txt.setVisible(False)
         self.lbl_total_val.setVisible(False)
 
-        self.btn_finalizar = QPushButton("✓ Finalizar Venda")
+        self.btn_finalizar = QPushButton("Finalizar Venda")
+        if _SVG_OK:
+            self.btn_finalizar.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_finalizar.setIconSize(QSize(16, 16))
+        else:
+            self.btn_finalizar.setText("✓ Finalizar Venda")
         self.btn_finalizar.setObjectName("btn_primario")
         self.btn_finalizar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_finalizar.setFixedHeight(45)
@@ -345,7 +372,7 @@ class VendasScreen(QWidget):
             self.lbl_total_txt.setVisible(False)
             self.lbl_total_val.setVisible(False)
             self.btn_finalizar.setVisible(False)
-            self.btn_finalizar_topo.setText("🛒 Finalizar (0)")
+            self.btn_finalizar_topo.setText("Finalizar (0)")
             return
 
         total = 0.0
@@ -364,7 +391,7 @@ class VendasScreen(QWidget):
         self.lbl_total_val.setVisible(True)
         self.lbl_total_val.setText(f"R$ {total:.2f}")
         self.btn_finalizar.setVisible(True)
-        self.btn_finalizar_topo.setText(f"🛒 Finalizar ({len(self.carrinho_itens)})")
+        self.btn_finalizar_topo.setText(f"Finalizar ({len(self.carrinho_itens)})")
 
     def _alterar_qtd(self, idx: int, delta: int):
         if not (0 <= idx < len(self.carrinho_itens)):

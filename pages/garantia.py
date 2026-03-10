@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QSizePolicy, QScrollArea, QGridLayout,
     QButtonGroup
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon, QAction
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
@@ -25,6 +26,26 @@ _STAT_ICONES = {
     "clock":  "fi-sr-clock.svg",
     "money":  "fi-sr-money-bill-wave.svg",
 }
+
+
+# ──────────────────────────────────────────────
+# Helper: linha com ícone SVG + texto
+# ──────────────────────────────────────────────
+
+def _svg_info_row(svg_file: str, cor: str, texto: str, obj_name: str) -> QHBoxLayout:
+    """Retorna um QHBoxLayout com ícone SVG + label."""
+    row = QHBoxLayout()
+    row.setSpacing(6)
+    row.setContentsMargins(0, 0, 0, 0)
+    if _SVG_OK:
+        ico = QLabel()
+        ico.setPixmap(svg_para_pixmap(svg_file, cor, 12, 12))
+        row.addWidget(ico)
+    lbl = QLabel(texto)
+    lbl.setObjectName(obj_name)
+    row.addWidget(lbl)
+    row.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+    return row
 
 
 # ──────────────────────────────────────────────
@@ -52,15 +73,12 @@ class RMACard(QFrame):
         layout.addLayout(top)
 
         modelo = ordem.get("modelo", "—")
-        cor = (ordem.get("cor") or "").strip()
-        lbl_modelo = QLabel(f"📱 {modelo}{' • ' + cor if cor else ''}")
-        lbl_modelo.setObjectName("g_modelo")
-        layout.addWidget(lbl_modelo)
+        cor_cel = (ordem.get("cor") or "").strip()
+        txt_modelo = f"{modelo}{' • ' + cor_cel if cor_cel else ''}"
+        layout.addLayout(_svg_info_row("fi-sr-smartphone.svg", "#94A3B8", txt_modelo, "g_modelo"))
 
         tec = ordem.get("tecnico_nome") or "Sem técnico"
-        lbl_tec = QLabel(f"🔧 {tec}")
-        lbl_tec.setObjectName("g_info")
-        layout.addWidget(lbl_tec)
+        layout.addLayout(_svg_info_row("fi-sr-tools.svg", "#64748B", tec, "g_info"))
 
         data_term = (ordem.get("data_termino") or "")[:10]
         data_cad  = (ordem.get("data_cadastro") or "")[:10]
@@ -143,14 +161,16 @@ class GarantiaCard(QFrame):
         layout.addLayout(top)
 
         # ─ Linha 2: modelo ─
-        lbl_modelo = QLabel(f"📱 {garantia.get('modelo', '—')}")
-        lbl_modelo.setObjectName("g_modelo")
-        layout.addWidget(lbl_modelo)
+        layout.addLayout(_svg_info_row(
+            "fi-sr-smartphone.svg", "#94A3B8",
+            garantia.get('modelo', '—'), "g_modelo"
+        ))
 
         # ─ Linha 3: tipo de garantia ─
-        lbl_tipo = QLabel(f"🛡️ {garantia.get('garantia', '—')}")
-        lbl_tipo.setObjectName("g_info")
-        layout.addWidget(lbl_tipo)
+        layout.addLayout(_svg_info_row(
+            "fi-sr-shield-check.svg", "#38BDF8",
+            garantia.get('garantia', '—'), "g_info"
+        ))
 
         # ─ Linha 4: datas ─
         datas_layout = QHBoxLayout()
@@ -236,8 +256,16 @@ class GarantiasRMAScreen(QWidget):
         # ─ Abas ─
         abas_layout = QHBoxLayout()
         self.grupo_abas = QButtonGroup(self)
-        for i, texto in enumerate(["🛡️ Coberturas Ativas", "↺ Retornos (RMA)"]):
+
+        _abas = [
+            ("  Coberturas Ativas", "fi-sr-shield-check.svg"),
+            ("  Retornos (RMA)",    "fi-sr-rotate-left.svg"),
+        ]
+        for i, (texto, svg) in enumerate(_abas):
             btn = QPushButton(texto)
+            if _SVG_OK:
+                btn.setIcon(QIcon(svg_para_pixmap(svg, "#64748B", 16, 16)))
+                btn.setIconSize(QSize(16, 16))
             btn.setObjectName("btn_aba")
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -251,7 +279,13 @@ class GarantiasRMAScreen(QWidget):
 
         # ─ Busca ─
         self.edit_busca = QLineEdit()
-        self.edit_busca.setPlaceholderText("🔍 Buscar por cliente, OS ou modelo...")
+        self.edit_busca.setPlaceholderText("Buscar por cliente, OS ou modelo...")
+        if _SVG_OK:
+            search_action = QAction(
+                QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 16, 16)), "",
+                self.edit_busca
+            )
+            self.edit_busca.addAction(search_action, QLineEdit.ActionPosition.LeadingPosition)
         self.edit_busca.textChanged.connect(lambda t: self._carregar_garantias(filtro=t))
         self.main_layout.addWidget(self.edit_busca)
 

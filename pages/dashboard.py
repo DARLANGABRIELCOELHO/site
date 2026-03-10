@@ -71,10 +71,35 @@ def _icone_bg(cor: str) -> str:
     }.get(cor, "rgba(255,255,255,0.06)")
 
 
-def _section_label(texto: str) -> QLabel:
+# SVGs para cada seção do dashboard
+_SECAO_SVG = {
+    "Assistência Técnica": ("fi-sr-tools.svg",         "#F26522"),
+    "Estoque":              ("fi-sr-box.svg",            "#4ADE80"),
+    "Financeiro":          ("fi-sr-money-bill-wave.svg","#4ADE80"),
+    "Controle":            ("fi-sr-chart-mixed.svg",    "#38BDF8"),
+    "Técnicos":            ("fi-sr-users.svg",          "#64748B"),
+}
+
+
+def _section_label(texto: str) -> QWidget:
+    """Retorna um widget com ícone SVG + título da seção."""
+    container = QWidget()
+    container.setStyleSheet("background: transparent;")
+    row = QHBoxLayout(container)
+    row.setContentsMargins(0, 0, 0, 0)
+    row.setSpacing(8)
+
+    svg_file, cor = _SECAO_SVG.get(texto, (None, "#FFFFFF"))
+    if _SVG_OK and svg_file:
+        ico = QLabel()
+        ico.setPixmap(svg_para_pixmap(svg_file, cor, 14, 14))
+        row.addWidget(ico)
+
     lbl = QLabel(texto)
     lbl.setObjectName("section_label")
-    return lbl
+    row.addWidget(lbl)
+    row.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+    return container
 
 
 def _separator() -> QFrame:

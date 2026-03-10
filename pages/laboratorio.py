@@ -9,8 +9,8 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QSizePolicy, QMessageBox, QScrollArea,
     QComboBox, QMenu
 )
-from PyQt6.QtGui import QAction
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtCore import Qt, QSize
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
@@ -148,10 +148,15 @@ class OSCard(QFrame):
         lbl_id.setObjectName("txt_cinza")
         header.addWidget(lbl_id)
 
-        self.btn_menu = QPushButton("⋮")
+        self.btn_menu = QPushButton()
         self.btn_menu.setObjectName("btn_menu_card")
         self.btn_menu.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_menu.setFixedWidth(28)
+        if _SVG_OK:
+            self.btn_menu.setIcon(QIcon(svg_para_pixmap("fi-sr-menu-dots-vertical.svg", "#64748B", 14, 14)))
+            self.btn_menu.setIconSize(QSize(14, 14))
+        else:
+            self.btn_menu.setText("⋮")
         self.btn_menu.clicked.connect(self._abrir_menu_acoes)
         header.addWidget(self.btn_menu)
 
@@ -166,12 +171,31 @@ class OSCard(QFrame):
 
         # ─ Meta ─
         meta = QHBoxLayout()
-        lbl_data = QLabel(f"🕒 {_tempo_relativo(ordem.get('data_cadastro', ''))}")
+        meta.setSpacing(12)
+
+        # Data
+        meta_data = QHBoxLayout()
+        meta_data.setSpacing(4)
+        if _SVG_OK:
+            ico_data = QLabel()
+            ico_data.setPixmap(svg_para_pixmap("fi-sr-clock.svg", "#64748B", 11, 11))
+            meta_data.addWidget(ico_data)
+        lbl_data = QLabel(_tempo_relativo(ordem.get('data_cadastro', '')))
         lbl_data.setObjectName("txt_cinza_pequeno")
-        lbl_tec = QLabel(f"🔧 {ordem.get('tecnico_nome') or 'Sem técnico'}")
+        meta_data.addWidget(lbl_data)
+        meta.addLayout(meta_data)
+
+        # Técnico
+        meta_tec = QHBoxLayout()
+        meta_tec.setSpacing(4)
+        if _SVG_OK:
+            ico_tec = QLabel()
+            ico_tec.setPixmap(svg_para_pixmap("fi-sr-tools.svg", "#64748B", 11, 11))
+            meta_tec.addWidget(ico_tec)
+        lbl_tec = QLabel(ordem.get('tecnico_nome') or 'Sem técnico')
         lbl_tec.setObjectName("txt_cinza_pequeno")
-        meta.addWidget(lbl_data)
-        meta.addWidget(lbl_tec)
+        meta_tec.addWidget(lbl_tec)
+        meta.addLayout(meta_tec)
         meta.addItem(QSpacerItem(10, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
         self._layout.addLayout(meta)
 
@@ -242,11 +266,18 @@ class OSCard(QFrame):
         menu = QMenu(self)
         menu.setObjectName("menu_card")
 
-        acao_imprimir  = QAction("🖨  Imprimir", self)
-        acao_whatsapp  = QAction("💬  Chamar no WhatsApp", self)
-        acao_editar    = QAction("✏  Editar", self)
-        acao_cancelar  = QAction("✕  Cancelar OS", self)
-        acao_apagar    = QAction("🗑  Apagar OS", self)
+        acao_imprimir  = QAction("Imprimir", self)
+        acao_whatsapp  = QAction("WhatsApp", self)
+        acao_editar    = QAction("Editar", self)
+        acao_cancelar  = QAction("Cancelar OS", self)
+        acao_apagar    = QAction("Apagar OS", self)
+
+        if _SVG_OK:
+            acao_imprimir.setIcon(QIcon(svg_para_pixmap("fi-sr-print.svg",       "#94A3B8", 14, 14)))
+            acao_whatsapp.setIcon(QIcon(svg_para_pixmap("fi-sr-comment-dots.svg","#4ADE80", 14, 14)))
+            acao_editar.setIcon(QIcon(svg_para_pixmap(  "fi-sr-pencil.svg",       "#94A3B8", 14, 14)))
+            acao_cancelar.setIcon(QIcon(svg_para_pixmap("fi-sr-ban.svg",          "#EAB308", 14, 14)))
+            acao_apagar.setIcon(QIcon(svg_para_pixmap(  "fi-sr-trash.svg",        "#F87171", 14, 14)))
 
         acao_imprimir.triggered.connect(lambda: self._on_imprimir(self._ordem))
         acao_whatsapp.triggered.connect(lambda: self._on_whatsapp(self._ordem))
@@ -308,7 +339,13 @@ class LaboratorioScreen(QWidget):
         filtros = QHBoxLayout()
         filtros.setSpacing(15)
         self.edit_busca = QLineEdit()
-        self.edit_busca.setPlaceholderText("🔍 Buscar por cliente, modelo ou ID...")
+        self.edit_busca.setPlaceholderText("Buscar por cliente, modelo ou ID...")
+        if _SVG_OK:
+            search_action = QAction(
+                QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 16, 16)), "",
+                self.edit_busca
+            )
+            self.edit_busca.addAction(search_action, QLineEdit.ActionPosition.LeadingPosition)
         self.edit_busca.textChanged.connect(self._carregar_ordens)
 
         self.cmb_status = QComboBox()

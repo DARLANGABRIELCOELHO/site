@@ -6,7 +6,8 @@ from PyQt6.QtWidgets import (
     QLabel, QPushButton, QFrame, QSpacerItem,
     QSizePolicy, QScrollArea, QCheckBox, QMessageBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
@@ -84,9 +85,14 @@ class TecnicoCard(QFrame):
         chk_ativo.setCursor(Qt.CursorShape.PointingHandCursor)
         header.addWidget(chk_ativo)
 
-        btn_excluir = QPushButton("🗑️")
+        btn_excluir = QPushButton()
         btn_excluir.setObjectName("btn_lixeira")
         btn_excluir.setCursor(Qt.CursorShape.PointingHandCursor)
+        if _SVG_OK:
+            btn_excluir.setIcon(QIcon(svg_para_pixmap("fi-sr-trash.svg", "#64748B", 14, 14)))
+            btn_excluir.setIconSize(QSize(14, 14))
+        else:
+            btn_excluir.setText("🗑️")
         btn_excluir.clicked.connect(lambda: on_excluir(tecnico["id"]))
         header.addWidget(btn_excluir)
 
@@ -101,10 +107,10 @@ class TecnicoCard(QFrame):
         pendentes  = tecnico.get("os_pendentes",  0) or 0
         total      = tecnico.get("os_total",      0) or 0
 
-        self._mini_stat(grid_stats, "✓ Concluídas",   concluidas, "#4ADE80", 0, 0)
-        self._mini_stat(grid_stats, "🔧 Em Andamento", andamento,  "#F26522", 0, 1)
-        self._mini_stat(grid_stats, "⏱ Pendentes",    pendentes,  "#EAB308", 1, 0)
-        self._mini_stat(grid_stats, "👤 Total",        total,      "#FFFFFF", 1, 1)
+        self._mini_stat(grid_stats, "Concluídas",   "fi-sr-badge-check.svg", concluidas, "#4ADE80", 0, 0)
+        self._mini_stat(grid_stats, "Em Andamento",  "fi-sr-tools.svg",       andamento,  "#F26522", 0, 1)
+        self._mini_stat(grid_stats, "Pendentes",     "fi-sr-clock.svg",       pendentes,  "#EAB308", 1, 0)
+        self._mini_stat(grid_stats, "Total",         "fi-sr-users.svg",       total,      "#FFFFFF", 1, 1)
         layout.addLayout(grid_stats)
 
         # ─ OS em andamento ─
@@ -124,14 +130,25 @@ class TecnicoCard(QFrame):
         else:
             layout.addItem(QSpacerItem(20, 36, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-    def _mini_stat(self, grid, titulo, valor, cor, row, col):
+    def _mini_stat(self, grid, titulo, svg_icon, valor, cor, row, col):
         box = QFrame()
         box.setObjectName("mini_stat_box")
         bl = QVBoxLayout(box)
         bl.setContentsMargins(10, 10, 10, 10)
         bl.setSpacing(2)
+
+        # Título com ícone SVG
+        titulo_row = QHBoxLayout()
+        titulo_row.setSpacing(4)
+        if _SVG_OK and svg_icon:
+            lbl_ico = QLabel()
+            lbl_ico.setPixmap(svg_para_pixmap(svg_icon, cor, 11, 11))
+            titulo_row.addWidget(lbl_ico)
         lbl_t = QLabel(titulo)
         lbl_t.setObjectName("mini_stat_label")
+        titulo_row.addWidget(lbl_t)
+        titulo_row.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        bl.addLayout(titulo_row)
         lbl_v = QLabel(str(valor))
         lbl_v.setObjectName("mini_stat_valor")
         lbl_v.setStyleSheet(f"color: {cor};")

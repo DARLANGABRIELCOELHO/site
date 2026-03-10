@@ -6,13 +6,20 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QScrollArea,
-    QButtonGroup, QMessageBox, QComboBox, QTextEdit, QMenu
+    QButtonGroup, QMessageBox, QDialog, QComboBox, QTextEdit, QMenu
 )
-from PyQt6.QtGui import QAction
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtCore import Qt, QSize
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
+
 from component.base_dialog import ModernDialog
 
 
@@ -287,16 +294,24 @@ class EditarCelularDialog(ModernDialog):
 # ──────────────────────────────────────────────
 
 def _btn_menu_card(parent, on_editar, on_excluir) -> QPushButton:
-    btn = QPushButton("⋮", parent)
+    btn = QPushButton(parent)
     btn.setObjectName("btn_menu_card")
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     btn.setFixedWidth(28)
+    if _SVG_OK:
+        btn.setIcon(QIcon(svg_para_pixmap("fi-sr-menu-dots-vertical.svg", "#64748B", 14, 14)))
+        btn.setIconSize(QSize(14, 14))
+    else:
+        btn.setText("⋮")
 
     def abrir():
         menu = QMenu(btn)
         menu.setObjectName("menu_card")
-        acao_editar  = QAction("✏  Editar", btn)
-        acao_excluir = QAction("🗑  Excluir", btn)
+        acao_editar  = QAction("Editar", btn)
+        acao_excluir = QAction("Excluir", btn)
+        if _SVG_OK:
+            acao_editar.setIcon(QIcon(svg_para_pixmap("fi-sr-pencil.svg", "#94A3B8", 14, 14)))
+            acao_excluir.setIcon(QIcon(svg_para_pixmap("fi-sr-trash.svg", "#F87171", 14, 14)))
         acao_editar.triggered.connect(on_editar)
         acao_excluir.triggered.connect(on_excluir)
         menu.addAction(acao_editar)
@@ -559,20 +574,29 @@ class CatalogoScreen(QWidget):
 
         self.grupo_toggle = QButtonGroup(self)
 
-        self.btn_servicos = QPushButton("🔧 Serviços")
+        self.btn_servicos = QPushButton("  Serviços")
+        if _SVG_OK:
+            self.btn_servicos.setIcon(QIcon(svg_para_pixmap("fi-sr-tools.svg", "#64748B", 16, 16)))
+            self.btn_servicos.setIconSize(QSize(16, 16))
         self.btn_servicos.setCheckable(True)
         self.btn_servicos.setChecked(True)
         self.btn_servicos.setObjectName("btn_toggle")
         self.btn_servicos.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_servicos.setFixedWidth(160)
 
-        self.btn_produtos = QPushButton("📦 Produtos")
+        self.btn_produtos = QPushButton("  Produtos")
+        if _SVG_OK:
+            self.btn_produtos.setIcon(QIcon(svg_para_pixmap("fi-sr-box.svg", "#64748B", 16, 16)))
+            self.btn_produtos.setIconSize(QSize(16, 16))
         self.btn_produtos.setCheckable(True)
         self.btn_produtos.setObjectName("btn_toggle")
         self.btn_produtos.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_produtos.setFixedWidth(160)
 
-        self.btn_celulares = QPushButton("📱 Celulares")
+        self.btn_celulares = QPushButton("  Celulares")
+        if _SVG_OK:
+            self.btn_celulares.setIcon(QIcon(svg_para_pixmap("fi-sr-smartphone.svg", "#64748B", 16, 16)))
+            self.btn_celulares.setIconSize(QSize(16, 16))
         self.btn_celulares.setCheckable(True)
         self.btn_celulares.setObjectName("btn_toggle")
         self.btn_celulares.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -589,7 +613,13 @@ class CatalogoScreen(QWidget):
         controles.addWidget(toggle_frame)
 
         self.edit_busca = QLineEdit()
-        self.edit_busca.setPlaceholderText("🔍 Buscar por nome ou categoria...")
+        self.edit_busca.setPlaceholderText("Buscar por nome ou categoria...")
+        if _SVG_OK:
+            search_action = QAction(
+                QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 16, 16)), "",
+                self.edit_busca
+            )
+            self.edit_busca.addAction(search_action, QLineEdit.ActionPosition.LeadingPosition)
         self.edit_busca.textChanged.connect(lambda t: self._carregar(filtro=t))
         controles.addWidget(self.edit_busca)
 

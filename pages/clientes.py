@@ -5,8 +5,8 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QScrollArea, QMessageBox, QMenu
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QAction, QIcon
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
@@ -55,9 +55,14 @@ class ClienteCRMCard(QFrame):
 
         top_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
-        btn_menu = QPushButton("⋮")
+        btn_menu = QPushButton()
         btn_menu.setObjectName("btn_acao_pequeno")
         btn_menu.setCursor(Qt.CursorShape.PointingHandCursor)
+        if _SVG_OK:
+            btn_menu.setIcon(QIcon(svg_para_pixmap("fi-sr-menu-dots-vertical.svg", "#64748B", 14, 14)))
+            btn_menu.setIconSize(QSize(14, 14))
+        else:
+            btn_menu.setText("⋮")
 
         def _abrir_menu():
             menu = QMenu(btn_menu)
@@ -67,16 +72,19 @@ class ClienteCRMCard(QFrame):
                 QMenu::item:selected { background-color: #334155; border-radius: 4px; }
                 QMenu::separator { height: 1px; background: #334155; margin: 4px 8px; }
             """)
-            acao_visualizar = QAction("👁  Visualizar dados", menu)
-            acao_visualizar.triggered.connect(lambda: on_vizualizar(cliente))
-            menu.addAction(acao_visualizar)
-            menu.addSeparator()
-            acao_editar = QAction("✏  Editar cliente", menu)
+            acao_ver     = QAction("Ver detalhes", btn_menu)
+            acao_editar  = QAction("Editar", btn_menu)
+            acao_excluir = QAction("Excluir", btn_menu)
+            if _SVG_OK:
+                acao_ver.setIcon(QIcon(svg_para_pixmap("fi-sr-eye.svg", "#94A3B8", 14, 14)))
+                acao_editar.setIcon(QIcon(svg_para_pixmap("fi-sr-pencil.svg", "#94A3B8", 14, 14)))
+                acao_excluir.setIcon(QIcon(svg_para_pixmap("fi-sr-trash.svg", "#F87171", 14, 14)))
+            acao_ver.triggered.connect(lambda: on_ver(cliente))
             acao_editar.triggered.connect(lambda: on_editar(cliente))
+            acao_excluir.triggered.connect(lambda: on_excluir(cliente["id"]))
+            menu.addAction(acao_ver)
             menu.addAction(acao_editar)
             menu.addSeparator()
-            acao_excluir = QAction("🗑  Excluir", menu)
-            acao_excluir.triggered.connect(lambda: on_excluir(cliente["id"]))
             menu.addAction(acao_excluir)
             menu.exec(btn_menu.mapToGlobal(btn_menu.rect().bottomLeft()))
 
@@ -147,7 +155,13 @@ class ClientesScreen(QWidget):
 
         # --- Barra de Busca ---
         self.edit_busca = QLineEdit()
-        self.edit_busca.setPlaceholderText("🔍 Buscar por nome, telefone ou documento...")
+        self.edit_busca.setPlaceholderText("Buscar por nome, telefone ou documento...")
+        if _SVG_OK:
+            search_action = QAction(
+                QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 16, 16)), "",
+                self.edit_busca
+            )
+            self.edit_busca.addAction(search_action, QLineEdit.ActionPosition.LeadingPosition)
         self.edit_busca.textChanged.connect(self._filtrar)
         self.main_layout.addWidget(self.edit_busca)
 
