@@ -3,9 +3,9 @@
 
 a = Analysis(
     ['app.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
-    datas=[('logo.ico', '.'), ('logo.png', '.'), ('data\\ifix.db', 'data')],
+    datas=[('logo.ico', '.'), ('logo.png', '.'), ('data\\ifix.db', 'data'), ('svg', 'svg')],
     hiddenimports=['pages.dashboard', 'pages.vendas', 'pages.clientes', 'pages.tecnicos', 'pages.garantia', 'pages.laboratorio', 'pages.catalogo', 'component.sidebar', 'component.vizualizarcliente', 'component.ordemdeservico', 'component.novavenda', 'component.novocliente', 'component.novotecnico', 'component.notas'],
     hookspath=[],
     hooksconfig={},

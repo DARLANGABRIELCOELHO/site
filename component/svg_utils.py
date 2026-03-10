@@ -6,11 +6,19 @@ Uso:
     pixmap = svg_para_pixmap("fi-sr-dashboard.svg", "#F26522", 20, 20)
 """
 import os
+import sys
 from PyQt6.QtCore import Qt, QByteArray
 from PyQt6.QtGui import QPixmap, QPainter
 from PyQt6.QtSvg import QSvgRenderer
 
-_SVG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "svg")
+
+def _get_svg_dir():
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, "svg")
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "svg")
+
+
+_SVG_DIR = _get_svg_dir()
 
 
 def svg_para_pixmap(nome_arquivo: str, cor: str, largura: int = 20, altura: int = 20) -> QPixmap:

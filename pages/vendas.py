@@ -302,14 +302,31 @@ class VendasScreen(QWidget):
         filtro = self.edit_busca.text().strip()
         try:
             produtos = db.listar_produtos(filtro)
+            for p in produtos:
+                p["_tipo"] = "produto"
         except Exception:
             produtos = []
 
+        try:
+            celulares = db.listar_celulares(filtro)
+            for c in celulares:
+                c["nome"] = f"{c.get('marca', '')} {c.get('modelo', '')}".strip()
+                c["estoque"] = 1
+                c["estoque_minimo"] = 0
+                c["_tipo"] = "celular"
+        except Exception:
+            celulares = []
+
+        todos = produtos + celulares
+
         # Marca quais estão no carrinho
-        ids_carrinho = {i["id"]: i["qtd"] for i in self.carrinho_itens}
-        for p in produtos:
-            p["_no_carrinho"] = p["id"] in ids_carrinho
-            p["_qtd_carrinho"] = ids_carrinho.get(p["id"], 0)
+        ids_carrinho = {(i["id"], i.get("_tipo", "produto")): i["qtd"] for i in self.carrinho_itens}
+        for p in todos:
+            chave = (p["id"], p.get("_tipo", "produto"))
+            p["_no_carrinho"] = chave in ids_carrinho
+            p["_qtd_carrinho"] = ids_carrinho.get(chave, 0)
+
+        produtos = todos
 
         # Limpa grid
         for i in reversed(range(self.grid_produtos.count())):
@@ -336,12 +353,13 @@ class VendasScreen(QWidget):
     # ── Carrinho ────────────────────────────────
 
     def _add_produto_carrinho(self, produto: dict):
+        tipo = produto.get("_tipo", "produto")
         estoque = int(produto.get("estoque") or 0)
         for item in self.carrinho_itens:
-            if item["id"] == produto["id"]:
-                if item["qtd"] >= estoque:
-                    QMessageBox.warning(self, "Estoque insuficiente",
-                                        f"Apenas {estoque} un em estoque.")
+            if item["id"] == produto["id"] and item.get("_tipo", "produto") == tipo:
+                if tipo == "celular" or item["qtd"] >= estoque:
+                    msg = "Celular é uma unidade única." if tipo == "celular" else f"Apenas {estoque} un em estoque."
+                    QMessageBox.warning(self, "Limite atingido", msg)
                     return
                 item["qtd"] += 1
                 self._render_carrinho()
@@ -349,7 +367,7 @@ class VendasScreen(QWidget):
                 return
 
         if estoque <= 0:
-            QMessageBox.warning(self, "Sem estoque", "Produto sem estoque disponível.")
+            QMessageBox.warning(self, "Sem estoque", "Item sem estoque disponível.")
             return
 
         self.carrinho_itens.append({
@@ -357,6 +375,7 @@ class VendasScreen(QWidget):
             "nome":  produto["nome"],
             "preco": float(produto.get("preco") or 0),
             "qtd":   1,
+            "_tipo": tipo,
         })
         self._render_carrinho()
         self._carregar_produtos()
@@ -453,13 +472,31 @@ class VendasScreen(QWidget):
         total_bruto     = sum(i["preco"] * i["qtd"] for i in self.carrinho_itens)
         total_liq       = max(0.0, total_bruto - desconto)
 
+        itens_produto  = [i for i in self.carrinho_itens if i.get("_tipo", "produto") == "produto"]
+        itens_celular  = [i for i in self.carrinho_itens if i.get("_tipo") == "celular"]
+
         try:
-            venda_id = db.registrar_venda_pdv(
-                itens=self.carrinho_itens,
-                forma_pagamento=forma_pagamento,
-                parcelamento=parcelamento,
-                cliente_id=cliente_id,
-            )
+            venda_id = None
+            if itens_produto:
+                venda_id = db.registrar_venda_pdv(
+                    itens=itens_produto,
+                    forma_pagamento=forma_pagamento,
+                    parcelamento=parcelamento,
+                    cliente_id=cliente_id,
+                )
+            for cel in itens_celular:
+                venda_id = db.registrar_venda(
+                    cliente_id=cliente_id,
+                    produto_id=None,
+                    celular_id=cel["id"],
+                    servico_id=None,
+                    desconto=0,
+                    forma_pagamento=forma_pagamento,
+                    parcelamento=parcelamento,
+                    observacao="",
+                    garantia="",
+                    valor_total=float(cel["preco"]),
+                )
         except Exception as e:
             QMessageBox.critical(dlg, "Erro", f"Falha ao registrar venda:\n{e}")
             return
