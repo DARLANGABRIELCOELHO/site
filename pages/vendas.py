@@ -63,10 +63,15 @@ class CartItem(QFrame):
         btn_mais.setFixedSize(24, 24)
         btn_mais.clicked.connect(on_mais)
 
-        btn_del = QPushButton("🗑")
+        btn_del = QPushButton()
         btn_del.setObjectName("btn_lixeira")
         btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_del.setFixedSize(24, 24)
+        if _SVG_OK:
+            btn_del.setIcon(QIcon(svg_para_pixmap("fi-sr-trash.svg", "#64748B", 14, 14)))
+            btn_del.setIconSize(QSize(14, 14))
+        else:
+            btn_del.setText("🗑")
         btn_del.clicked.connect(on_remover)
 
         ctrl.addWidget(btn_menos)

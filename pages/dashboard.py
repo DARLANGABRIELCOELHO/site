@@ -172,14 +172,15 @@ class TecnicoCard(QFrame):
     def __init__(self, nome: str, faturamento: str, gastos: str, lucro: str):
         super().__init__()
         self.setObjectName("card_tecnico")
-        self.setFixedSize(260, 150)
+        self.setFixedSize(280, 160)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(6)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(8)
 
         # Cabeçalho: avatar + nome
         top = QHBoxLayout()
+        top.setSpacing(8)
         lbl_av = QLabel()
         lbl_av.setObjectName("tec_avatar")
         lbl_av.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -190,16 +191,24 @@ class TecnicoCard(QFrame):
         top.addWidget(lbl_av)
         lbl_nome = QLabel(nome)
         lbl_nome.setObjectName("tec_nome")
+        lbl_nome.setWordWrap(True)
         top.addWidget(lbl_nome)
         top.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
         layout.addLayout(top)
 
-        layout.addItem(QSpacerItem(10, 4, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setObjectName("separator")
+        layout.addWidget(sep)
 
-        # Stats grid: 3 colunas
+        # Stats: Faturamento | Gastos | Lucro
         stats = QHBoxLayout()
-        stats.setSpacing(8)
-        for label, val, cor in [("Fat.", faturamento, "#4ADE80"), ("Gastos", gastos, "#F26522"), ("Lucro", lucro, "#38BDF8")]:
+        stats.setSpacing(0)
+        for label, val, cor in [
+            ("Faturamento", faturamento, "#4ADE80"),
+            ("Gastos",      gastos,      "#EF4444"),
+            ("Lucro",       lucro,       "#38BDF8"),
+        ]:
             col = QVBoxLayout()
             col.setSpacing(2)
             lbl_l = QLabel(label)
@@ -207,6 +216,7 @@ class TecnicoCard(QFrame):
             lbl_v = QLabel(val)
             lbl_v.setObjectName("tec_stat_val")
             lbl_v.setStyleSheet(f"color: {cor};")
+            lbl_v.setWordWrap(True)
             col.addWidget(lbl_l)
             col.addWidget(lbl_v)
             stats.addLayout(col)
@@ -259,8 +269,7 @@ class DashboardScreen(QWidget):
         self._periodo_ativo = "1 Mês"
         self._modo_fin = "Ambos"          # filtro do bloco financeiro
         self._cards: dict[str, DashboardCard] = {}
-        self._tec_container: QWidget | None = None
-        self._tec_layout: QHBoxLayout | None = None
+        self._tec_grid: QGridLayout | None = None
         self.initUI()
 
     # ──────────────────────────────────────────
@@ -393,12 +402,12 @@ class DashboardScreen(QWidget):
         self._content_layout.addWidget(_section_label("Técnicos"))
         self._content_layout.addWidget(_separator())
 
-        self._tec_container = QWidget()
-        self._tec_layout = QHBoxLayout(self._tec_container)
-        self._tec_layout.setSpacing(16)
-        self._tec_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self._tec_layout.setContentsMargins(0, 0, 0, 0)
-        self._content_layout.addWidget(self._tec_container)
+        tec_container = QWidget()
+        self._tec_grid = QGridLayout(tec_container)
+        self._tec_grid.setSpacing(16)
+        self._tec_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._tec_grid.setContentsMargins(0, 0, 0, 0)
+        self._content_layout.addWidget(tec_container)
 
         self._content_layout.addItem(
             QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -432,8 +441,8 @@ class DashboardScreen(QWidget):
             for chave in ("os_total", "os_entregues", "os_pendentes", "taxa_cancelamento", "taxa_garantia"):
                 if chave in self._cards:
                     self._cards[chave].lbl_valor.setText(kpis.get(chave, "—"))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Dashboard] _atualizar_assistencia: {e}")
 
     def _atualizar_estoque(self, di):
         try:
@@ -441,20 +450,19 @@ class DashboardScreen(QWidget):
             for chave in ("custo_estoque", "potencial_estoque", "roi_estoque"):
                 if chave in self._cards:
                     self._cards[chave].lbl_valor.setText(kpis.get(chave, "—"))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Dashboard] _atualizar_estoque: {e}")
 
     def _atualizar_financeiro(self, di):
         try:
-            modo = self._modo_fin.lower().replace("ó", "o").replace("é", "e")  # "ambos"/"servicos"/"vendas"
-            mapa = {"servicos": "servicos", "vendas": "vendas", "ambos": "ambos"}
-            modo_db = mapa.get(modo, "ambos")
+            mapa = {"Serviços": "servicos", "Vendas": "vendas", "Ambos": "ambos"}
+            modo_db = mapa.get(self._modo_fin, "ambos")
             kpis = db.calcular_kpis_financeiro(di, modo_db)
             for chave in ("faturamento", "lucro_liquido", "gastos", "ticket_medio"):
                 if chave in self._cards:
                     self._cards[chave].lbl_valor.setText(kpis.get(chave, "—"))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Dashboard] _atualizar_financeiro: {e}")
 
     def _atualizar_controle(self, di):
         try:
@@ -462,29 +470,34 @@ class DashboardScreen(QWidget):
             for chave in ("item_mais_vendido", "servico_mais_prestado", "melhor_cliente", "estoque_baixo"):
                 if chave in self._cards:
                     self._cards[chave].lbl_valor.setText(kpis.get(chave, "—"))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Dashboard] _atualizar_controle: {e}")
 
     def _atualizar_tecnicos(self, di):
-        if not self._tec_layout:
+        if not self._tec_grid:
             return
         # Limpa cards antigos
-        while self._tec_layout.count():
-            item = self._tec_layout.takeAt(0)
+        while self._tec_grid.count():
+            item = self._tec_grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
         try:
             tecnicos = db.calcular_kpis_tecnicos(di)
             if not tecnicos:
-                lbl = QLabel("Nenhum técnico cadastrado.")
+                lbl = QLabel("Nenhum técnico com dados no período.")
                 lbl.setObjectName("subtitle")
-                self._tec_layout.addWidget(lbl)
+                self._tec_grid.addWidget(lbl, 0, 0)
                 return
+            row, col = 0, 0
             for t in tecnicos:
                 card = TecnicoCard(t["nome"], t["faturamento"], t["gastos"], t["lucro"])
-                self._tec_layout.addWidget(card)
-        except Exception:
-            pass
+                self._tec_grid.addWidget(card, row, col)
+                col += 1
+                if col >= 4:
+                    col = 0
+                    row += 1
+        except Exception as e:
+            print(f"[Dashboard] _atualizar_tecnicos: {e}")
 
     def _mudar_periodo(self, index: int):
         self._periodo_ativo = list(PERIODOS.keys())[index]
@@ -589,6 +602,6 @@ class DashboardScreen(QWidget):
             font-size: 14px;
         }
         QLabel#tec_nome       { color: #FFFFFF; font-size: 13px; font-weight: 700; }
-        QLabel#tec_stat_label { color: #64748B; font-size: 10px; font-weight: 600; }
+        QLabel#tec_stat_label { color: #64748B; font-size: 9px; font-weight: 600; text-transform: uppercase; }
         QLabel#tec_stat_val   { font-size: 11px; font-weight: 700; }
         """)

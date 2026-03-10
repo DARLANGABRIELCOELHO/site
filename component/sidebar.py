@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QPixmap
 
 from component.svg_utils import svg_para_pixmap
 
@@ -25,13 +25,13 @@ class SidebarMenu(QWidget):
 
     # (arquivo SVG, texto do menu)
     ITENS_MENU = [
-        ("fi-sr-dashboard.svg",          "Dashboard"),
-        ("fi-sr-tools.svg",              "Laboratório"),
-        ("fi-sr-shopping-cart.svg",      "Vendas"),
-        ("fi-sr-users.svg",              "Clientes"),
-        ("fi-sr-shield-check.svg",       "Garantias & RMA"),
-        ("fi-sr-catalog.svg",            "Catálogo"),
-        ("fi-sr-user-helmet-safety.svg", "Técnicos"),
+        ("fi-sr-dashboard.svg",          " Dashboard"),
+        ("fi-sr-tools.svg",              " Laboratório"),
+        ("fi-sr-shopping-cart.svg",      " Vendas"),
+        ("fi-sr-users.svg",              " Clientes"),
+        ("fi-sr-shield-check.svg",       " Garantias & RMA"),
+        ("fi-sr-catalog.svg",            " Catálogo"),
+        ("fi-sr-user-helmet-safety.svg", " Técnicos"),
     ]
 
     def __init__(self, stacked_widget=None, parent=None):
@@ -48,23 +48,27 @@ class SidebarMenu(QWidget):
         self.setObjectName("sidebar")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 30, 20, 30)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 30, 16, 30)
+        layout.setSpacing(6)
 
         # --- Logo ---
-        lbl_logo = QLabel("📱 IFIX Pro")
-        lbl_logo.setObjectName("logo_title")
-
-        lbl_subtitle = QLabel("Manager")
-        lbl_subtitle.setObjectName("logo_subtitle")
+        _logo_path = os.path.join(os.path.dirname(__file__), '..', 'logo.png')
+        lbl_logo = QLabel()
+        lbl_logo.setObjectName("logo_img")
+        lbl_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if os.path.exists(_logo_path):
+            pix = QPixmap(_logo_path).scaledToWidth(140, Qt.TransformationMode.SmoothTransformation)
+            lbl_logo.setPixmap(pix)
+        else:
+            lbl_logo.setText("IFIX Pro")
+            lbl_logo.setObjectName("logo_title")
 
         layout.addWidget(lbl_logo)
-        layout.addWidget(lbl_subtitle)
-        layout.addSpacing(30)
+        layout.addSpacing(24)
 
         # --- Itens do Menu ---
         for i, (svg_file, texto) in enumerate(self.ITENS_MENU):
-            btn = QPushButton(f"  {texto}")
+            btn = QPushButton(texto)
             btn.setIconSize(QSize(20, 20))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setObjectName("menu_item")
@@ -121,28 +125,19 @@ class SidebarMenu(QWidget):
             font-family: 'Poppins', 'Montserrat', sans-serif;
         }
 
-        /* Logo */
-        QLabel#logo_title {
-            color: #FFFFFF;
-            font-size: 22px;
-            font-weight: 700;
-        }
-        QLabel#logo_subtitle {
-            color: #64748B;
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: -5px;
-            margin-left: 32px;
+        /* Logo imagem */
+        QLabel#logo_img {
+            padding: 8px 0px;
         }
 
         /* Botão inativo */
         QPushButton#menu_item {
             background-color: transparent;
             color: #64748B;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             text-align: left;
-            padding: 12px 15px;
+            padding: 11px 18px;
             border-radius: 8px;
             border: none;
         }
@@ -155,10 +150,10 @@ class SidebarMenu(QWidget):
         QPushButton#menu_item_ativo {
             background-color: #0F172A;
             color: #F26522;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             text-align: left;
-            padding: 12px 15px;
+            padding: 11px 18px;
             border-radius: 8px;
             border: 1px solid #1E293B;
         }

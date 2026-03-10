@@ -255,17 +255,18 @@ class NovoServicoWindow(QWidget):
 
         QPushButton#btnFechar {
             background-color: transparent;
-            border: 1px solid #334155;
-            color: #FFFFFF;
-            padding: 0;
+            border: 1px solid #64748B;
+            color: #64748B;
+            padding: 0px;
             font-size: 16px;
             font-weight: 700;
             border-radius: 8px;
         }
 
         QPushButton#btnFechar:hover {
-            background-color: #7F1D1D;
+            background-color: rgba(239, 68, 68, 0.15);
             border: 1px solid #EF4444;
+            color: #EF4444;
         }
 
         QPushButton#btnSalvar {

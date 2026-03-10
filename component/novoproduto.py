@@ -8,10 +8,18 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QMessageBox
 )
+from PyQt6.QtCore import QSize
+from PyQt6.QtGui import QIcon
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 from component.base_dialog import ModernWindow
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
 #========================================================================================================================================
 # JANELA DE CADASTRO DE NOVO PRODUTO
 #========================================================================================================================================
@@ -72,6 +80,9 @@ class NovoProdutoWindow(ModernWindow):
         self.btn_cancelar.setObjectName("btnCancelar")
         self.btn_cadastrar = QPushButton("Cadastrar")
         self.btn_cadastrar.setObjectName("btnCadastrar")
+        if _SVG_OK:
+            self.btn_cadastrar.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_cadastrar.setIconSize(QSize(16, 16))
         botoes_layout.addWidget(self.btn_cancelar)
         botoes_layout.addWidget(self.btn_cadastrar)
         main_layout.addLayout(botoes_layout)

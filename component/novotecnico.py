@@ -7,10 +7,18 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QMessageBox
 )
+from PyQt6.QtCore import QSize
+from PyQt6.QtGui import QIcon
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 from component.base_dialog import ModernWindow
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
 
 
 class NovoTecnicoWindow(ModernWindow):
@@ -56,6 +64,9 @@ class NovoTecnicoWindow(ModernWindow):
 
         self.btn_cadastrar = QPushButton("Cadastrar")
         self.btn_cadastrar.setObjectName("btnCadastrar")
+        if _SVG_OK:
+            self.btn_cadastrar.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_cadastrar.setIconSize(QSize(16, 16))
 
         botoes_layout.addWidget(self.btn_cancelar)
         botoes_layout.addWidget(self.btn_cadastrar)

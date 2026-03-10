@@ -23,11 +23,18 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QSizePolicy, QMessageBox, QComboBox,
     QScrollArea, QWidget
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtWidgets import QCompleter
 
 import data.database as db
 from component.base_dialog import ModernDialog
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
 
 
 class EditarOrdemServicoWindow(ModernDialog):
@@ -155,15 +162,21 @@ class EditarOrdemServicoWindow(ModernDialog):
         self.cmb_add_servico = QComboBox()
         self.cmb_add_servico.setEditable(True)
         self.cmb_add_servico.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.cmb_add_servico.lineEdit().setPlaceholderText("🔍 Pesquisar serviço...")
+        self.cmb_add_servico.lineEdit().setPlaceholderText("Pesquisar serviço...")
+        if _SVG_OK:
+            _act = QAction(QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 14, 14)), "", self.cmb_add_servico.lineEdit())
+            self.cmb_add_servico.lineEdit().addAction(_act, QLineEdit.ActionPosition.LeadingPosition)
         self._popular_cmb_servicos()
         add_row.addWidget(self.cmb_add_servico)
 
-        btn_add = QPushButton("+ Adicionar")
+        btn_add = QPushButton("Adicionar")
         btn_add.setObjectName("btnAdd")
         btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
+        if _SVG_OK:
+            btn_add.setIcon(QIcon(svg_para_pixmap("fi-sr-plus.svg", "#FFFFFF", 14, 14)))
+            btn_add.setIconSize(QSize(14, 14))
         btn_add.clicked.connect(self._adicionar_servico)
-        btn_add.setFixedWidth(120)
+        btn_add.setFixedWidth(130)
         add_row.addWidget(btn_add)
         layout.addLayout(add_row)
 
@@ -176,6 +189,9 @@ class EditarOrdemServicoWindow(ModernDialog):
         self.btn_cancelar.setObjectName("btnCancelar")
         self.btn_salvar = QPushButton("Salvar Alterações")
         self.btn_salvar.setObjectName("btnConfirmar")
+        if _SVG_OK:
+            self.btn_salvar.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_salvar.setIconSize(QSize(16, 16))
         self.btn_cancelar.clicked.connect(self.reject)
         self.btn_salvar.clicked.connect(self._salvar)
         btns.addWidget(self.btn_cancelar)
@@ -249,10 +265,15 @@ class EditarOrdemServicoWindow(ModernDialog):
             lbl_preco = QLabel(f"R$ {sv['preco']:.2f}")
             lbl_preco.setObjectName("sv_preco")
 
-            btn_del = QPushButton("🗑")
+            btn_del = QPushButton()
             btn_del.setObjectName("btn_lixeira")
             btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_del.setFixedSize(28, 28)
+            if _SVG_OK:
+                btn_del.setIcon(QIcon(svg_para_pixmap("fi-sr-trash.svg", "#64748B", 14, 14)))
+                btn_del.setIconSize(QSize(14, 14))
+            else:
+                btn_del.setText("🗑")
             btn_del.clicked.connect(lambda _, idx=i: self._remover_servico(idx))
 
             rl.addWidget(lbl_nome)
@@ -325,7 +346,7 @@ class EditarOrdemServicoWindow(ModernDialog):
     # ──────────────────────────────────────────────
 
     def _aplicar_estilos(self):
-        self.setStyleSheet(self.styleSheet() + """
+        self._card.setStyleSheet(self._card.styleSheet() + """
             QLabel { color: #64748B; font-size: 12px; }
             QLabel#title { color: #FFFFFF; font-size: 18px; font-weight: 700; }
             QLabel#lbl_campo { color: #64748B; font-size: 12px; font-weight: 600; }

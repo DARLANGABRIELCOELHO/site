@@ -27,14 +27,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # CSS compartilhado para o chrome (frame + header)
 # ────────────────────────────────────────────────────────────
 _CHROME_CSS = """
-    QWidget {
-        font-family: 'Poppins', 'Montserrat', sans-serif;
-        color: #FFFFFF;
-    }
     QFrame#modal_card {
         background-color: #0F172A;
         border: 1px solid #1E293B;
         border-radius: 16px;
+        font-family: 'Poppins', 'Montserrat', sans-serif;
+        color: #FFFFFF;
     }
     QFrame#modal_header {
         background-color: transparent;
@@ -142,8 +140,11 @@ class _FramelessMixin:
         self.content_layout.setSpacing(12)
         card_layout.addLayout(self.content_layout)
 
-        # ── estilos chrome ───────────────────────────────────
-        self.setStyleSheet(_CHROME_CSS)
+        # ── estilos chrome ────────────────────────────────────────────
+        # Aplicado em _card (não em self), para que subclasses possam
+        # concatenar via self._card.setStyleSheet(self._card.styleSheet() + estilo)
+        # sem perder os estilos do botão fechar e do chrome.
+        self._card.setStyleSheet(_CHROME_CSS)
 
     # ── drag handling ────────────────────────────────────────
     def mousePressEvent(self, event):
