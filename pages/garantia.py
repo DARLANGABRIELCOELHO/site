@@ -13,6 +13,19 @@ from PyQt6.QtCore import Qt
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
+
+# SVG de cada ícone dos StatCards
+_STAT_ICONES = {
+    "shield": "fi-sr-shield-check.svg",
+    "clock":  "fi-sr-clock.svg",
+    "money":  "fi-sr-money-bill-wave.svg",
+}
+
 
 # ──────────────────────────────────────────────
 # Card de OS Cancelada (RMA)
@@ -81,9 +94,16 @@ class StatCard(QFrame):
         top = QHBoxLayout()
         lbl_titulo = QLabel(titulo)
         lbl_titulo.setObjectName("stat_titulo")
-        lbl_icone = QLabel(icone)
+
+        lbl_icone = QLabel()
         lbl_icone.setObjectName("stat_icone")
         lbl_icone.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        svg_key = _STAT_ICONES.get(icone, "")
+        if _SVG_OK and svg_key:
+            lbl_icone.setPixmap(svg_para_pixmap(svg_key, "#F26522", 18, 18))
+        else:
+            lbl_icone.setText(icone)
+
         top.addWidget(lbl_titulo)
         top.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
         top.addWidget(lbl_icone)
@@ -202,9 +222,9 @@ class GarantiasRMAScreen(QWidget):
         self.main_layout.addLayout(header)
 
         # ─ Cards de Estatísticas ─
-        self.card_ativas  = StatCard("Garantias Ativas",  "0",       "🛡️")
-        self.card_vencendo = StatCard("Vencem em 7 dias", "0",       "⏱️")
-        self.card_custo   = StatCard("Valor Coberto",     "R$ 0,00", "💰", "total em serviços com garantia")
+        self.card_ativas  = StatCard("Garantias Ativas",  "0",       "shield")
+        self.card_vencendo = StatCard("Vencem em 7 dias", "0",       "clock")
+        self.card_custo   = StatCard("Valor Coberto",     "R$ 0,00", "money", "total em serviços com garantia")
 
         stats = QHBoxLayout()
         stats.setSpacing(20)

@@ -12,6 +12,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import data.database as db
 from component.novocliente import NovoClienteWindow
 
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
+
 
 class ClienteCRMCard(QFrame):
     """Card individual de um cliente."""
@@ -28,9 +34,13 @@ class ClienteCRMCard(QFrame):
         # --- Linha 1: Avatar, Info e Ações ---
         top_layout = QHBoxLayout()
 
-        lbl_avatar = QLabel("👤")
+        lbl_avatar = QLabel()
         lbl_avatar.setObjectName("avatar_icon")
         lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if _SVG_OK:
+            lbl_avatar.setPixmap(svg_para_pixmap("fi-sr-user.svg", "#F26522", 20, 20))
+        else:
+            lbl_avatar.setText("👤")
         top_layout.addWidget(lbl_avatar)
 
         info_layout = QVBoxLayout()

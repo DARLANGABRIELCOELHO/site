@@ -17,6 +17,12 @@ import data.database as db
 from component.ordemdeservico import NovaOrdemServicoWindow, EditarOrdemServicoWindow
 from component.novaentrega import NovaEntregaWindow
 
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
+
 
 # ──────────────────────────────────────────────
 # COMPONENTES
@@ -115,8 +121,12 @@ class OSCard(QFrame):
 
         # ─ Header ─
         header = QHBoxLayout()
-        lbl_icon = QLabel("📱")
+        lbl_icon = QLabel()
         lbl_icon.setObjectName("icone_card")
+        if _SVG_OK:
+            lbl_icon.setPixmap(svg_para_pixmap("fi-sr-smartphone.svg", "#F26522", 20, 20))
+        else:
+            lbl_icon.setText("📱")
 
         info = QVBoxLayout()
         info.setSpacing(2)

@@ -12,6 +12,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import data.database as db
 from component.novotecnico import NovoTecnicoWindow
 
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
+
 
 # ──────────────────────────────────────────────
 # COMPONENTES
@@ -51,9 +57,13 @@ class TecnicoCard(QFrame):
         # ─ Cabeçalho: avatar, nome, especialidade, toggle, excluir ─
         header = QHBoxLayout()
 
-        lbl_avatar = QLabel("👤")
+        lbl_avatar = QLabel()
         lbl_avatar.setObjectName("avatar_icon")
         lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if _SVG_OK:
+            lbl_avatar.setPixmap(svg_para_pixmap("fi-sr-user.svg", "#F26522", 20, 20))
+        else:
+            lbl_avatar.setText("👤")
         header.addWidget(lbl_avatar)
 
         info = QVBoxLayout()

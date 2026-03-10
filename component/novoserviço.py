@@ -147,17 +147,6 @@ class NovoServicoWindow(ModernWindow):
 # Aplica estilos 
     def apply_styles(self):
         estilo = """
-        QWidget {
-            background-color: #0F172A;
-            font-family: 'Poppins', 'Montserrat', sans-serif;
-            color: #FFFFFF;
-        }
-
-        QLabel#title {
-            font-size: 20px;
-            font-weight: 700;
-        }
-
         QLabel {
             font-size: 12px;
             font-weight: 600;
@@ -177,6 +166,18 @@ class NovoServicoWindow(ModernWindow):
             border: 1px solid #F26522;
         }
 
+        QListWidget {
+            background-color: #0B1120;
+            border: 1px solid #1E293B;
+            border-radius: 6px;
+            color: #FFFFFF;
+            font-size: 13px;
+        }
+
+        QListWidget::item:selected {
+            background-color: #F26522;
+        }
+
         QPushButton {
             font-size: 14px;
             font-weight: 600;
@@ -191,7 +192,7 @@ class NovoServicoWindow(ModernWindow):
             background-color: #E05412;
         }
         """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 # Exemplo de implementação do método salvar_servico
     def salvar_servico(self):
         nome = self.edit_nome_servico.text().strip()

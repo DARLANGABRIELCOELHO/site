@@ -14,6 +14,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 from component.novavenda import FinalizarVendaDialog
 
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
+
 
 # ──────────────────────────────────────────────
 # CartItem — linha do carrinho
@@ -95,13 +101,22 @@ class ProdutoCard(QPushButton):
         layout.setSpacing(5)
 
         header = QHBoxLayout()
-        lbl_icon = QLabel("📦")
+        lbl_icon = QLabel()
         lbl_icon.setObjectName("icone_box")
+        cor_box = "#F26522" if no_carrinho else "#8a8f98"
+        if _SVG_OK:
+            lbl_icon.setPixmap(svg_para_pixmap("fi-sr-box.svg", cor_box, 16, 16))
+        else:
+            lbl_icon.setText("📦")
         header.addWidget(lbl_icon)
         header.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
         if alerta:
-            lbl_alerta = QLabel("⚠️")
+            lbl_alerta = QLabel()
             lbl_alerta.setObjectName("icone_alerta")
+            if _SVG_OK:
+                lbl_alerta.setPixmap(svg_para_pixmap("fi-sr-triangle-warning.svg", "#EAB308", 14, 14))
+            else:
+                lbl_alerta.setText("⚠️")
             header.addWidget(lbl_alerta)
         layout.addLayout(header)
 

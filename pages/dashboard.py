@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy, QScrollArea, QButtonGroup
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
@@ -17,6 +18,30 @@ try:
     _SVG_OK = True
 except Exception:
     _SVG_OK = False
+
+# Mapeamento: identificador → arquivo SVG em svg/
+_ICONE_SVG = {
+    # Assistência
+    "os_total":            "fi-sr-tools.svg",
+    "os_entregues":        "fi-sr-badge-check.svg",
+    "os_pendentes":        "fi-sr-clock.svg",
+    "taxa_cancelamento":   "fi-sr-ban.svg",
+    "taxa_garantia":       "fi-sr-shield-check.svg",
+    # Estoque
+    "custo_estoque":       "fi-sr-box.svg",
+    "potencial_estoque":   "fi-sr-chart-line-up.svg",
+    "roi_estoque":         "fi-sr-chart-mixed.svg",
+    # Financeiro
+    "faturamento":         "fi-sr-money-bill-wave.svg",
+    "lucro_liquido":       "fi-sr-chart-line-up.svg",
+    "gastos":              "fi-sr-chart-mixed.svg",
+    "ticket_medio":        "fi-sr-ticket.svg",
+    # Controle
+    "item_mais_vendido":   "fi-sr-trophy.svg",
+    "servico_mais_prestado": "fi-sr-tools.svg",
+    "melhor_cliente":      "fi-sr-crown.svg",
+    "estoque_baixo":       "fi-sr-triangle-warning.svg",
+}
 
 # ──────────────────────────────────────────────
 # Períodos
@@ -82,12 +107,21 @@ class DashboardCard(QFrame):
         top.addWidget(lbl_titulo)
         top.addItem(QSpacerItem(10, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
-        lbl_icone = QLabel(icone)
+        lbl_icone = QLabel()
         lbl_icone.setObjectName("card_icone")
         lbl_icone.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_icone.setStyleSheet(
-            f"color: {cor_icone}; background-color: {_icone_bg(cor_icone)};"
+            f"background-color: {_icone_bg(cor_icone)};"
         )
+        # Tenta renderizar o SVG correspondente à chave do ícone
+        svg_file = _ICONE_SVG.get(icone, "")
+        if _SVG_OK and svg_file:
+            lbl_icone.setPixmap(svg_para_pixmap(svg_file, cor_icone, 16, 16))
+        else:
+            lbl_icone.setText(icone)
+            lbl_icone.setStyleSheet(
+                f"color: {cor_icone}; background-color: {_icone_bg(cor_icone)};"
+            )
         top.addWidget(lbl_icone)
         layout.addLayout(top)
 
@@ -121,9 +155,13 @@ class TecnicoCard(QFrame):
 
         # Cabeçalho: avatar + nome
         top = QHBoxLayout()
-        lbl_av = QLabel("👤")
+        lbl_av = QLabel()
         lbl_av.setObjectName("tec_avatar")
         lbl_av.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if _SVG_OK:
+            lbl_av.setPixmap(svg_para_pixmap("fi-sr-user.svg", "#F26522", 16, 16))
+        else:
+            lbl_av.setText("👤")
         top.addWidget(lbl_av)
         lbl_nome = QLabel(nome)
         lbl_nome.setObjectName("tec_nome")
@@ -158,35 +196,36 @@ class DashboardScreen(QWidget):
 
     # ── Estrutura estática das seções ──────────
     # Grid 1 — Assistência
+    # O 3.º item (icone) agora é a CHAVE usada em _ICONE_SVG; se não tiver SVG, cai no emoji.
     _ASSISTENCIA = [
-        ("Ordens de Serviço",  "Total no período",         "🔧", "#F26522", False, "os_total"),
-        ("OS Entregues",       "Serviços finalizados",      "✅", "#4ADE80", False, "os_entregues"),
-        ("OS Pendentes",       "Em fila ou reparo",         "⏳", "#EAB308", False, "os_pendentes"),
-        ("Taxa Cancelamento",  "Serviços não aprovados",    "🚫", "#F26522", False, "taxa_cancelamento"),
-        ("Taxa de Garantia",   "Retorno pós-entrega",       "🛡️", "#38BDF8", False, "taxa_garantia"),
+        ("Ordens de Serviço",  "Total no período",          "os_total",          "#F26522", False, "os_total"),
+        ("OS Entregues",       "Serviços finalizados",       "os_entregues",      "#4ADE80", False, "os_entregues"),
+        ("OS Pendentes",       "Em fila ou reparo",          "os_pendentes",      "#EAB308", False, "os_pendentes"),
+        ("Taxa Cancelamento",  "Serviços não aprovados",     "taxa_cancelamento", "#F26522", False, "taxa_cancelamento"),
+        ("Taxa de Garantia",   "Retorno pós-entrega",        "taxa_garantia",     "#38BDF8", False, "taxa_garantia"),
     ]
 
     # Grid 2 — Vendas (Estoque)
     _VENDAS_ESTOQUE = [
-        ("Custo Estoque",      "Capital investido",         "📦", "#F26522", False, "custo_estoque"),
-        ("Potencial Estoque",  "Valor de venda total",      "📈", "#4ADE80", False, "potencial_estoque"),
-        ("ROI s/ Estoque",     "Retorno sobre investimento","📊", "#38BDF8", False, "roi_estoque"),
+        ("Custo Estoque",      "Capital investido",          "custo_estoque",     "#F26522", False, "custo_estoque"),
+        ("Potencial Estoque",  "Valor de venda total",       "potencial_estoque", "#4ADE80", False, "potencial_estoque"),
+        ("ROI s/ Estoque",     "Retorno sobre investimento", "roi_estoque",       "#38BDF8", False, "roi_estoque"),
     ]
 
     # Grid 3 — Financeiro (dinâmico via filtro)
     _FINANCEIRO = [
-        ("Faturamento",   "Receita bruta realizada",  "💰", "#4ADE80", True,  "faturamento"),
-        ("Lucro Líquido", "Faturamento − Gastos",     "📈", "#4ADE80", False, "lucro_liquido"),
-        ("Gastos",        "Custo operacional direto", "📉", "#F26522", False, "gastos"),
-        ("Ticket Médio",  "Valor médio por operação", "💳", "#38BDF8", False, "ticket_medio"),
+        ("Faturamento",   "Receita bruta realizada",  "faturamento",   "#4ADE80", True,  "faturamento"),
+        ("Lucro Líquido", "Faturamento − Gastos",     "lucro_liquido", "#4ADE80", False, "lucro_liquido"),
+        ("Gastos",        "Custo operacional direto", "gastos",        "#F26522", False, "gastos"),
+        ("Ticket Médio",  "Valor médio por operação", "ticket_medio",  "#38BDF8", False, "ticket_medio"),
     ]
 
     # Grid 4 — Controle
     _CONTROLE = [
-        ("Item mais Vendido",      "Produto com maior saída",   "🏆", "#EAB308", False, "item_mais_vendido",     True),
-        ("Serviço mais Prestado",  "Serviço com maior demanda", "🔧", "#F26522", False, "servico_mais_prestado", True),
-        ("Melhor Cliente",         "Maior retorno financeiro",  "👑", "#4ADE80", True,  "melhor_cliente",        True),
-        ("Estoque Baixo",          "Produtos com ≤ 3 unidades", "⚠️", "#EAB308", False, "estoque_baixo",         False),
+        ("Item mais Vendido",      "Produto com maior saída",   "item_mais_vendido",     "#EAB308", False, "item_mais_vendido",     True),
+        ("Serviço mais Prestado",  "Serviço com maior demanda", "servico_mais_prestado", "#F26522", False, "servico_mais_prestado", True),
+        ("Melhor Cliente",         "Maior retorno financeiro",  "melhor_cliente",        "#4ADE80", True,  "melhor_cliente",        True),
+        ("Estoque Baixo",          "Produtos com ≤ 3 unidades", "estoque_baixo",         "#EAB308", False, "estoque_baixo",         False),
     ]
 
     def __init__(self):
@@ -257,7 +296,7 @@ class DashboardScreen(QWidget):
         self._content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # ── Bloco 1: Assistência ──
-        self._content_layout.addWidget(_section_label("🔧  Assistência Técnica"))
+        self._content_layout.addWidget(_section_label("Assistência Técnica"))
         self._content_layout.addWidget(_separator())
         row1 = QHBoxLayout()
         row1.setSpacing(16)
@@ -270,7 +309,7 @@ class DashboardScreen(QWidget):
 
         # ── Bloco 2: Estoque ──
         self._content_layout.addSpacing(5)
-        self._content_layout.addWidget(_section_label("📦  Estoque"))
+        self._content_layout.addWidget(_section_label("Estoque"))
         self._content_layout.addWidget(_separator())
         row2 = QHBoxLayout()
         row2.setSpacing(16)
@@ -285,7 +324,7 @@ class DashboardScreen(QWidget):
         self._content_layout.addSpacing(5)
         fin_header = QHBoxLayout()
         fin_header.setSpacing(12)
-        fin_header.addWidget(_section_label("💰  Financeiro"))
+        fin_header.addWidget(_section_label("Financeiro"))
         fin_header.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
         self.grupo_fin = QButtonGroup(self)
@@ -313,7 +352,7 @@ class DashboardScreen(QWidget):
 
         # ── Bloco 4: Controle ──
         self._content_layout.addSpacing(5)
-        self._content_layout.addWidget(_section_label("📊  Controle"))
+        self._content_layout.addWidget(_section_label("Controle"))
         self._content_layout.addWidget(_separator())
         row4 = QHBoxLayout()
         row4.setSpacing(16)
@@ -326,7 +365,7 @@ class DashboardScreen(QWidget):
 
         # ── Bloco 5: Técnicos ──
         self._content_layout.addSpacing(5)
-        self._content_layout.addWidget(_section_label("👤  Técnicos"))
+        self._content_layout.addWidget(_section_label("Técnicos"))
         self._content_layout.addWidget(_separator())
 
         self._tec_container = QWidget()

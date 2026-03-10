@@ -6,13 +6,14 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QScrollArea,
-    QButtonGroup, QMessageBox, QDialog, QComboBox, QTextEdit, QMenu
+    QButtonGroup, QMessageBox, QComboBox, QTextEdit, QMenu
 )
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernDialog
 
 
 # ──────────────────────────────────────────────
@@ -42,8 +43,6 @@ def margem_pct(custo, preco) -> str:
 
 def _estilos_dialog():
     return """
-        QDialog { background-color: #0F172A; font-family: 'Poppins', sans-serif; }
-        QLabel#dlg_titulo { color: #FFFFFF; font-size: 16px; font-weight: 700; }
         QLabel { color: #64748B; font-size: 12px; font-weight: 600; }
         QLineEdit, QTextEdit, QComboBox {
             background-color: #0B1120; border: 1px solid #1E293B;
@@ -66,21 +65,13 @@ def _estilos_dialog():
     """
 
 
-class EditarServicoDialog(QDialog):
+class EditarServicoDialog(ModernDialog):
     def __init__(self, servico: dict, parent=None):
-        super().__init__(parent)
+        super().__init__(f"Editar Serviço — {servico.get('nome','')}", 480, 400, parent)
         self._servico = servico
-        self.setWindowTitle(f"Editar Serviço — {servico.get('nome','')}")
-        self.setFixedSize(480, 400)
-        self.setModal(True)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 28, 28, 28)
+        layout = self.content_layout
         layout.setSpacing(12)
-
-        lbl_t = QLabel("✏ Editar Serviço")
-        lbl_t.setObjectName("dlg_titulo")
-        layout.addWidget(lbl_t)
 
         grid = QGridLayout()
         grid.setSpacing(10)
@@ -120,7 +111,7 @@ class EditarServicoDialog(QDialog):
         btns.addWidget(btn_s)
         layout.addLayout(btns)
 
-        self.setStyleSheet(_estilos_dialog())
+        self.setStyleSheet(self.styleSheet() + _estilos_dialog())
 
     def _salvar(self):
         try:
@@ -140,21 +131,13 @@ class EditarServicoDialog(QDialog):
             QMessageBox.critical(self, "Erro", f"Falha ao salvar:\n{e}")
 
 
-class EditarProdutoDialog(QDialog):
+class EditarProdutoDialog(ModernDialog):
     def __init__(self, produto: dict, parent=None):
-        super().__init__(parent)
+        super().__init__(f"Editar Produto — {produto.get('nome','')}", 480, 440, parent)
         self._produto = produto
-        self.setWindowTitle(f"Editar Produto — {produto.get('nome','')}")
-        self.setFixedSize(480, 440)
-        self.setModal(True)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 28, 28, 28)
+        layout = self.content_layout
         layout.setSpacing(12)
-
-        lbl_t = QLabel("✏ Editar Produto")
-        lbl_t.setObjectName("dlg_titulo")
-        layout.addWidget(lbl_t)
 
         grid = QGridLayout()
         grid.setSpacing(10)
@@ -198,7 +181,7 @@ class EditarProdutoDialog(QDialog):
         btns.addWidget(btn_s)
         layout.addLayout(btns)
 
-        self.setStyleSheet(_estilos_dialog())
+        self.setStyleSheet(self.styleSheet() + _estilos_dialog())
 
     def _salvar(self):
         try:
@@ -217,21 +200,13 @@ class EditarProdutoDialog(QDialog):
             QMessageBox.critical(self, "Erro", f"Falha ao salvar:\n{e}")
 
 
-class EditarCelularDialog(QDialog):
+class EditarCelularDialog(ModernDialog):
     def __init__(self, celular: dict, parent=None):
-        super().__init__(parent)
+        super().__init__(f"Editar Celular — {celular.get('modelo','')}", 520, 500, parent)
         self._celular = celular
-        self.setWindowTitle(f"Editar Celular — {celular.get('modelo','')}")
-        self.setFixedSize(520, 500)
-        self.setModal(True)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 28, 28, 28)
+        layout = self.content_layout
         layout.setSpacing(12)
-
-        lbl_t = QLabel("✏ Editar Celular")
-        lbl_t.setObjectName("dlg_titulo")
-        layout.addWidget(lbl_t)
 
         grid = QGridLayout()
         grid.setSpacing(10)
@@ -283,7 +258,7 @@ class EditarCelularDialog(QDialog):
         btns.addWidget(btn_s)
         layout.addLayout(btns)
 
-        self.setStyleSheet(_estilos_dialog())
+        self.setStyleSheet(self.styleSheet() + _estilos_dialog())
 
     def _salvar(self):
         try:
