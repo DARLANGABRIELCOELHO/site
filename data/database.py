@@ -224,6 +224,196 @@ def calcular_kpis(data_inicio: str = None):
         "potencial_estoque":  brl(potencial_estoque),
     }
 
+def calcular_kpis_financeiro(data_inicio: str = None, modo: str = "ambos") -> dict:
+    """
+    Retorna faturamento, gastos, lucro e ticket médio filtrados por modo:
+    - 'servicos': apenas ordem_entrega
+    - 'vendas':   apenas tabela vendas
+    - 'ambos':    ambos somados
+    """
+    def brl(v): return f"R$ {v:,.2f}".replace(",","X").replace(".",",").replace("X",".")
+
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        filtro_oe = "AND oe.data >= ?"       if data_inicio else ""
+        filtro_v  = "AND v.data_venda >= ?"  if data_inicio else ""
+        args_oe   = (data_inicio,)            if data_inicio else ()
+        args_v    = (data_inicio,)            if data_inicio else ()
+
+        fat_servicos = 0.0
+        fat_vendas   = 0.0
+        gastos_servicos = 0.0
+        gastos_vendas   = 0.0
+        qtd_servicos = 0
+        qtd_vendas   = 0
+
+        if modo in ("servicos", "ambos"):
+            c.execute(f"""
+                SELECT COUNT(*) AS n, COALESCE(SUM(oe.valor_total),0) AS fat
+                FROM ordem_entrega oe WHERE 1=1 {filtro_oe}
+            """, args_oe)
+            r = dict(c.fetchone())
+            fat_servicos  = r["fat"]
+            qtd_servicos  = r["n"]
+            # gastos = custo dos serviços das OS entregues no período
+            filtro_os = "AND oe.data >= ?" if data_inicio else ""
+            c.execute(f"""
+                SELECT COALESCE(SUM(oss.custo_servico_snapshot),0) AS gastos
+                FROM ordem_servico_servicos oss
+                JOIN ordem_entrega oe ON oe.ordem_servico_id = oss.ordem_servico_id
+                WHERE 1=1 {filtro_os}
+            """, args_oe)
+            gastos_servicos = dict(c.fetchone())["gastos"]
+
+        if modo in ("vendas", "ambos"):
+            c.execute(f"""
+                SELECT COUNT(*) AS n, COALESCE(SUM(v.valor_total),0) AS fat
+                FROM vendas v WHERE 1=1 {filtro_v}
+            """, args_v)
+            r = dict(c.fetchone())
+            fat_vendas  = r["fat"]
+            qtd_vendas  = r["n"]
+            # gastos de venda = custo dos produtos vendidos (via venda_itens)
+            try:
+                c.execute(f"""
+                    SELECT COALESCE(SUM(vi.quantidade * p.custos),0) AS gastos
+                    FROM venda_itens vi
+                    JOIN vendas v ON vi.venda_id = v.id
+                    JOIN produtos p ON vi.produto_id = p.id
+                    WHERE 1=1 {filtro_v}
+                """, args_v)
+                gastos_vendas = dict(c.fetchone())["gastos"]
+            except Exception:
+                gastos_vendas = 0.0
+
+    faturamento  = fat_servicos + fat_vendas
+    gastos       = gastos_servicos + gastos_vendas
+    lucro        = faturamento - gastos
+    qtd_total    = qtd_servicos + qtd_vendas
+    ticket_medio = faturamento / qtd_total if qtd_total > 0 else 0
+
+    return {
+        "faturamento":  brl(faturamento),
+        "lucro_liquido": brl(lucro),
+        "gastos":       brl(gastos),
+        "ticket_medio": brl(ticket_medio),
+    }
+
+
+def calcular_controle_kpis(data_inicio: str = None) -> dict:
+    """Retorna item mais vendido, serviço mais prestado, melhor cliente e qtd com estoque baixo."""
+    filtro_v  = "AND v.data_venda >= ?"  if data_inicio else ""
+    filtro_os = "AND os.data_cadastro >= ?" if data_inicio else ""
+    args_v    = (data_inicio,)             if data_inicio else ()
+    args_os   = (data_inicio,)             if data_inicio else ()
+
+    with get_db_connection() as conn:
+        c = conn.cursor()
+
+        # Item mais vendido (via venda_itens)
+        item_mais_vendido = "—"
+        try:
+            c.execute(f"""
+                SELECT vi.nome_snapshot, SUM(vi.quantidade) AS total
+                FROM venda_itens vi
+                JOIN vendas v ON vi.venda_id = v.id
+                WHERE 1=1 {filtro_v}
+                GROUP BY vi.nome_snapshot
+                ORDER BY total DESC LIMIT 1
+            """, args_v)
+            row = c.fetchone()
+            if row:
+                item_mais_vendido = f"{row['nome_snapshot']} ({int(row['total'])}x)"
+        except Exception:
+            pass
+
+        # Serviço mais prestado
+        servico_mais_prestado = "—"
+        c.execute(f"""
+            SELECT s.nome, COUNT(*) AS total
+            FROM ordem_servico_servicos oss
+            JOIN ordem_servico os ON oss.ordem_servico_id = os.id
+            JOIN servicos s ON oss.servico_id = s.id
+            WHERE 1=1 {filtro_os}
+            GROUP BY s.id
+            ORDER BY total DESC LIMIT 1
+        """, args_os)
+        row = c.fetchone()
+        if row:
+            servico_mais_prestado = f"{row['nome']} ({row['total']}x)"
+
+        # Melhor cliente (maior retorno financeiro: soma OS + vendas)
+        melhor_cliente = "—"
+        c.execute(f"""
+            SELECT cl.nome,
+                   COALESCE(SUM(oe.valor_total),0) AS receita
+            FROM clientes cl
+            LEFT JOIN ordem_entrega oe ON oe.cliente_id = cl.id
+            WHERE 1=1 {filtro_v.replace('v.data_venda', 'oe.data')}
+            GROUP BY cl.id
+            ORDER BY receita DESC LIMIT 1
+        """, args_v)
+        row = c.fetchone()
+        if row and row["receita"] > 0:
+            brl_val = f"R$ {row['receita']:,.2f}".replace(",","X").replace(".",",").replace("X",".")
+            melhor_cliente = f"{row['nome']} ({brl_val})"
+
+        # Estoque baixo (produtos com estoque <= 3)
+        c.execute("SELECT COUNT(*) AS n FROM produtos WHERE estoque <= 3 AND estoque >= 0")
+        estoque_baixo = dict(c.fetchone())["n"]
+
+    return {
+        "item_mais_vendido":    item_mais_vendido,
+        "servico_mais_prestado": servico_mais_prestado,
+        "melhor_cliente":       melhor_cliente,
+        "estoque_baixo":        str(estoque_baixo),
+    }
+
+
+def calcular_kpis_tecnicos(data_inicio: str = None) -> list:
+    """Retorna lista de {nome, faturamento, gastos, lucro} por técnico."""
+    filtro_oe = "AND oe.data >= ?" if data_inicio else ""
+    filtro_os = "AND os.data_cadastro >= ?" if data_inicio else ""
+    args      = (data_inicio,) if data_inicio else ()
+
+    def brl(v): return f"R$ {v:,.2f}".replace(",","X").replace(".",",").replace("X",".")
+
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, nome FROM tecnicos ORDER BY nome")
+        tecnicos = [dict(r) for r in c.fetchall()]
+
+        resultado = []
+        for t in tecnicos:
+            tid = t["id"]
+            # Faturamento = soma das OS entregues pelo técnico
+            c.execute(f"""
+                SELECT COALESCE(SUM(oe.valor_total),0) AS fat
+                FROM ordem_entrega oe
+                WHERE oe.tecnico_id = ? {filtro_oe}
+            """, (tid, *args))
+            fat = dict(c.fetchone())["fat"]
+
+            # Gastos = custo dos serviços nas OS do técnico
+            c.execute(f"""
+                SELECT COALESCE(SUM(oss.custo_servico_snapshot),0) AS gastos
+                FROM ordem_servico_servicos oss
+                JOIN ordem_servico os ON oss.ordem_servico_id = os.id
+                WHERE os.tecnico_id = ? {filtro_os}
+            """, (tid, *args))
+            gastos = dict(c.fetchone())["gastos"]
+
+            resultado.append({
+                "nome":        t["nome"],
+                "faturamento": brl(fat),
+                "gastos":      brl(gastos),
+                "lucro":       brl(fat - gastos),
+                "fat_raw":     fat,
+            })
+
+    return resultado
+
+
 # lista todos os clientes cadastrados no banco de dados
 def listar_clientes():
     with get_db_connection() as conn:

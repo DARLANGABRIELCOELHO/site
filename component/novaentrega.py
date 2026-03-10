@@ -4,7 +4,7 @@ import os
 from datetime import datetime, date, timedelta
 
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QMessageBox, QComboBox,
     QScrollArea, QWidget
@@ -14,9 +14,10 @@ from PyQt6.QtGui import QDoubleValidator
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernDialog
 
 
-class NovaEntregaWindow(QDialog):
+class NovaEntregaWindow(ModernDialog):
     """
     Dialog de entrega de OS — coleta laudo, desconto, forma de pagamento
     e garantia antes de registrar a entrega no banco.
@@ -45,12 +46,9 @@ class NovaEntregaWindow(QDialog):
                (precisa de: id, cliente_nome, modelo, cor,
                 tecnico_nome, servicos, total_servicos)
         """
-        super().__init__()
+        super().__init__(f"Entregar OS #{ordem['id']}", 620, 660)
         self._ordem = ordem
         db.inicializar_estado()
-        self.setWindowTitle(f"Entregar OS #{ordem['id']}")
-        self.setFixedSize(640, 700)
-        self.setModal(True)
         self._initUI()
 
     # ──────────────────────────────────────────────
@@ -58,14 +56,7 @@ class NovaEntregaWindow(QDialog):
     # ──────────────────────────────────────────────
 
     def _initUI(self):
-        root = QVBoxLayout(self)
-        root.setContentsMargins(30, 30, 30, 30)
-        root.setSpacing(15)
-
-        # ─ Título ─
-        lbl_titulo = QLabel(f"✓ ENTREGA — OS #{self._ordem['id']}")
-        lbl_titulo.setObjectName("title")
-        root.addWidget(lbl_titulo)
+        root = self.content_layout
 
         # ─ Resumo da OS (readonly) ─
         box_resumo = QFrame()
@@ -281,12 +272,7 @@ class NovaEntregaWindow(QDialog):
     # ──────────────────────────────────────────────
 
     def _aplicar_estilos(self):
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #0F172A;
-                font-family: 'Poppins', 'Montserrat', sans-serif;
-            }
-
+        self.setStyleSheet(self.styleSheet() + """
             QLabel#title {
                 color: #FFFFFF;
                 font-size: 18px;

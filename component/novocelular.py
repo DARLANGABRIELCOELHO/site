@@ -12,29 +12,20 @@ from PyQt6.QtWidgets import (
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernWindow
 
 #========================================================================================================================================
 # JANELA DE CADASTRO DE NOVO CELULAR
-#========================================================================================================================================   
-class NovoCelularWindow(QWidget):
+#========================================================================================================================================
+class NovoCelularWindow(ModernWindow):
     def __init__(self):
-        super().__init__()
+        super().__init__("Novo Celular", 760, 640)
         db.inicializar_estado()
         self.fotos_selecionadas = []
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle("Novo Celular")
-        self.setFixedSize(800, 700)
-
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-
-        lbl_titulo = QLabel("📱 NOVO CELULAR")
-        lbl_titulo.setObjectName("title")
-        main_layout.addWidget(lbl_titulo)
-        main_layout.addSpacing(5)
+        main_layout = self.content_layout
 
         grid = QGridLayout()
         grid.setSpacing(15)
@@ -120,17 +111,10 @@ class NovoCelularWindow(QWidget):
         self.btn_fotos.clicked.connect(self.selecionar_fotos)
 
         main_layout.addLayout(botoes_layout)
-        self.setLayout(main_layout)
         self.aplicar_estilos()
 
     def aplicar_estilos(self):
         estilo = """
-        QWidget {
-            background-color: #0F172A;
-            font-family: 'Poppins', 'Montserrat', sans-serif;
-            color: #FFFFFF;
-        }
-
         QLabel#title {
             font-size: 20px;
             font-weight: 700;
@@ -203,7 +187,7 @@ class NovoCelularWindow(QWidget):
             border: 1px solid #F26522;
         }
         """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 
     def selecionar_fotos(self):
         arquivos, _ = QFileDialog.getOpenFileNames(

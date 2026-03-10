@@ -11,31 +11,18 @@ from PyQt6.QtWidgets import (
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernWindow
 #========================================================================================================================================
 # JANELA DE CADASTRO DE NOVO CLIENTE
 #========================================================================================================================================
-class NovoClienteWindow(QWidget):
+class NovoClienteWindow(ModernWindow):
     def __init__(self):
-        super().__init__()
-        # Inicializa o banco de dados (descomente se necessário)
+        super().__init__("Novo Cliente", 620, 580)
         db.inicializar_estado()
         self.initUI()
 
     def initUI(self):
-        # Configuração da Janela
-        self.setWindowTitle("Novo Cliente")
-        self.setFixedSize(650, 680)  # Proporção ajustada para o novo design
-
-        # Layout principal com margens
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-
-        # Cabeçalho
-        lbl_titulo = QLabel("👤 NOVO CLIENTE")
-        lbl_titulo.setObjectName("title")
-        main_layout.addWidget(lbl_titulo)
-        main_layout.addSpacing(10)
+        main_layout = self.content_layout
 
         # Grid Layout
         grid = QGridLayout()
@@ -96,23 +83,13 @@ class NovoClienteWindow(QWidget):
         self.btn_cancelar.clicked.connect(self.close)
 
         main_layout.addLayout(botoes_layout)
-        self.setLayout(main_layout)
 
         self.aplicar_estilos()
 #========================================================================================================================================
 # ESTILOS
 #========================================================================================================================================
     def aplicar_estilos(self):
-        """Aplica a paleta hexadecimal e tipografia usando Qt StyleSheet (QSS)"""
         estilo = """
-        /* Fundo da Janela e Tipografia Global */
-        QWidget {
-            background-color: #0F172A;
-            font-family: 'Poppins', 'Montserrat', sans-serif;
-            color: #FFFFFF;
-        }
-
-        /* Estilo do Título Principal */
         QLabel#title {
             font-size: 20px;
             font-weight: 700;
@@ -180,7 +157,7 @@ class NovoClienteWindow(QWidget):
             border: 1px solid #FFFFFF;
         }
         """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 #========================================================================================================================================
     # Exemplo de implementação do método salvar_cliente
 #========================================================================================================================================

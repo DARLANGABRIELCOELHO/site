@@ -21,6 +21,7 @@ from PyQt6.QtCore import Qt
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernDialog
 
 # ============================================================================
 # COMPONENTES REUTILIZÁVEIS
@@ -523,25 +524,14 @@ class AbaServicos(QWidget):
 # JANELA PRINCIPAL COM ABAS
 # ============================================================================
 
-class NovaOrdemServicoWindow(QDialog):
+class NovaOrdemServicoWindow(ModernDialog):
     def __init__(self):
-        super().__init__()
+        super().__init__("Nova Ordem de Serviço", 880, 760)
         db.inicializar_estado()
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle("Nova Ordem de Serviço")
-        self.setFixedSize(900, 800)  # Tamanho ajustado para acomodar todas as abas
-        self.setModal(True)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-
-        # --- Cabeçalho ---
-        lbl_titulo = QLabel("+ NOVA ORDEM DE SERVIÇO")
-        lbl_titulo.setObjectName("title")
-        main_layout.addWidget(lbl_titulo)
+        main_layout = self.content_layout
 
         # --- Tab Widget ---
         self.tab_widget = QTabWidget()
@@ -693,11 +683,7 @@ class NovaOrdemServicoWindow(QDialog):
             QMessageBox.critical(self, "Erro", f"Erro ao criar OS:\n{e}")
     def apply_styles(self):
         estilo = """
-            /* Fundo da Janela e Tipografia Global */
-            QDialog, QTabWidget::pane {
-                background-color: #0F172A;
-                font-family: 'Poppins', 'Montserrat', sans-serif;
-            }
+            QTabWidget::pane { background-color: #0F172A; }
             /* Títulos e Labels */
             QLabel {
                 color: #64748B;
@@ -919,7 +905,7 @@ class NovaOrdemServicoWindow(QDialog):
                 border: 1px solid #FFFFFF;
             }
             """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 # ============================================================================
 # EXECUÇÃO PRINCIPAL
 # ============================================================================

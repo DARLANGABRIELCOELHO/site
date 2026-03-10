@@ -3,7 +3,7 @@ import sys
 import os
 
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QVBoxLayout, QHBoxLayout,
     QLabel, QTextEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QMessageBox, QComboBox
 )
@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernDialog
 
 
 MOTIVOS = [
@@ -24,16 +25,13 @@ MOTIVOS = [
 ]
 
 
-class NovoCancelamentoWindow(QDialog):
+class NovoCancelamentoWindow(ModernDialog):
     """Dialog para cancelar uma Ordem de Serviço."""
 
     def __init__(self, ordem: dict):
-        super().__init__()
+        super().__init__(f"Cancelar OS #{ordem['id']}", 520, 500)
         self._ordem = ordem
         db.inicializar_estado()
-        self.setWindowTitle(f"Cancelar OS #{ordem['id']}")
-        self.setFixedSize(520, 480)
-        self.setModal(True)
         self._initUI()
 
     # ──────────────────────────────────────────────
@@ -41,14 +39,7 @@ class NovoCancelamentoWindow(QDialog):
     # ──────────────────────────────────────────────
 
     def _initUI(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(14)
-
-        # ─ Título ─
-        lbl_titulo = QLabel(f"✕ CANCELAR OS #{self._ordem['id']}")
-        lbl_titulo.setObjectName("title")
-        layout.addWidget(lbl_titulo)
+        layout = self.content_layout
 
         # ─ Resumo da OS ─
         box = QFrame()
@@ -100,12 +91,12 @@ class NovoCancelamentoWindow(QDialog):
         lbl_aviso.setWordWrap(True)
         layout.addWidget(lbl_aviso)
 
-        layout.addItem(QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+        layout.addItem(QSpacerItem(20, 8, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
 
         # ─ Linha + botões ─
         linha_div = QFrame()
         linha_div.setFrameShape(QFrame.Shape.HLine)
-        linha_div.setObjectName("linha_laranja")
+        linha_div.setObjectName("linha_div")
         layout.addWidget(linha_div)
 
         btns = QHBoxLayout()
@@ -165,39 +156,15 @@ class NovoCancelamentoWindow(QDialog):
     # ──────────────────────────────────────────────
 
     def _aplicar_estilos(self):
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #0F172A;
-                font-family: 'Poppins', 'Montserrat', sans-serif;
-            }
-
-            QLabel#title {
-                color: #FFFFFF;
-                font-size: 18px;
-                font-weight: 700;
-            }
-
+        self.setStyleSheet(self.styleSheet() + """
             QFrame#box_resumo {
                 background-color: #0B1120;
                 border: 1px solid #1E293B;
                 border-radius: 10px;
             }
-            QLabel#lbl_rotulo {
-                color: #64748B;
-                font-size: 11px;
-                font-weight: 600;
-            }
-            QLabel#lbl_valor {
-                color: #FFFFFF;
-                font-size: 13px;
-                font-weight: 600;
-            }
-
-            QLabel#lbl_campo {
-                color: #64748B;
-                font-size: 12px;
-                font-weight: 600;
-            }
+            QLabel#lbl_rotulo { color: #64748B; font-size: 11px; font-weight: 600; }
+            QLabel#lbl_valor  { color: #FFFFFF; font-size: 13px; font-weight: 600; }
+            QLabel#lbl_campo  { color: #64748B; font-size: 12px; font-weight: 600; }
 
             QLabel#lbl_aviso {
                 color: #EAB308;
@@ -220,11 +187,7 @@ class NovoCancelamentoWindow(QDialog):
             QComboBox:focus, QTextEdit:focus { border: 1px solid #EF4444; }
             QComboBox::drop-down { border: none; }
 
-            QFrame#linha_laranja {
-                background-color: #EF4444;
-                max-height: 1px;
-                border: none;
-            }
+            QFrame#linha_div { background-color: #1E293B; max-height: 1px; border: none; }
 
             QPushButton#btnConfirmar {
                 background-color: #EF4444;

@@ -11,31 +11,18 @@ from PyQt6.QtWidgets import (
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernWindow
 #========================================================================================================================================
 # JANELA DE CADASTRO DE NOVO PRODUTO
-#========================================================================================================================================   
-class NovoProdutoWindow(QWidget):
+#========================================================================================================================================
+class NovoProdutoWindow(ModernWindow):
     def __init__(self):
-        super().__init__()
-        # Inicializa o banco de dados (descomente se necessário)
+        super().__init__("Novo Produto", 580, 460)
         db.inicializar_estado()
         self.initUI()
 
     def initUI(self):
-        # Configuração da Janela
-        self.setWindowTitle("Novo Produto")
-        self.setFixedSize(600, 500)  # Proporção ajustada para o novo design
-
-        # Layout principal com margens
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-
-        # Cabeçalho
-        lbl_titulo = QLabel("📱 NOVO PRODUTO")
-        lbl_titulo.setObjectName("title")
-        main_layout.addWidget(lbl_titulo)
-        main_layout.addSpacing(5)
+        main_layout = self.content_layout
 
         # Grid Layout
         grid = QGridLayout()
@@ -88,21 +75,12 @@ class NovoProdutoWindow(QWidget):
         botoes_layout.addWidget(self.btn_cancelar)
         botoes_layout.addWidget(self.btn_cadastrar)
         main_layout.addLayout(botoes_layout)
-        self.setLayout(main_layout)
-        # Conexões dos botões (descomente e implemente o método salvar_produto quando necessário)
         self.btn_cadastrar.clicked.connect(self.salvar_produto)
         self.btn_cancelar.clicked.connect(self.close)
         self.aplicar_estilos()
+
     def aplicar_estilos(self):
         estilo = """
-            /* Fundo da Janela e Tipografia Global */
-            QWidget {
-                background-color: #0F172A;
-                font-family: 'Poppins', 'Montserrat', sans-serif;
-                color: #FFFFFF;
-            }
-
-            /* Estilo do Título Principal */
             QLabel#title {
                 font-size: 20px;
                 font-weight: 700;
@@ -170,7 +148,7 @@ class NovoProdutoWindow(QWidget):
                 border: 1px solid #FFFFFF;
             }
         """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 #========================================================================================================================================
     # Exemplo de implementação do método salvar_produto 
 #========================================================================================================================================

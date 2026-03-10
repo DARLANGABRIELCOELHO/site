@@ -18,7 +18,7 @@ from component.ordemdeserviço import (   # noqa: F401
 )
 
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QMessageBox, QComboBox,
     QScrollArea, QWidget
@@ -27,16 +27,14 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QCompleter
 
 import data.database as db
+from component.base_dialog import ModernDialog
 
 
-class EditarOrdemServicoWindow(QDialog):
+class EditarOrdemServicoWindow(ModernDialog):
     def __init__(self, ordem_id: int):
-        super().__init__()
+        super().__init__(f"Editar OS #{ordem_id}", 640, 750)
         self.ordem_id = ordem_id
         db.inicializar_estado()
-        self.setWindowTitle(f"Editar OS #{ordem_id}")
-        self.setFixedSize(660, 780)
-        self.setModal(True)
         self._dados = db.obter_ordem_servico(ordem_id) or {}
         # Lista de trabalho: cada item é {"id": servico_id, "nome": str, "preco": float}
         self._servicos: list[dict] = []
@@ -70,13 +68,8 @@ class EditarOrdemServicoWindow(QDialog):
     # ──────────────────────────────────────────────
 
     def _initUI(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout = self.content_layout
         layout.setSpacing(14)
-
-        lbl_titulo = QLabel(f"✏ EDITAR OS #{self.ordem_id}")
-        lbl_titulo.setObjectName("title")
-        layout.addWidget(lbl_titulo)
 
         # ─ Grid principal ─
         grid = QGridLayout()
@@ -332,11 +325,7 @@ class EditarOrdemServicoWindow(QDialog):
     # ──────────────────────────────────────────────
 
     def _aplicar_estilos(self):
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #0F172A;
-                font-family: 'Poppins', 'Montserrat', sans-serif;
-            }
+        self.setStyleSheet(self.styleSheet() + """
             QLabel { color: #64748B; font-size: 12px; }
             QLabel#title { color: #FFFFFF; font-size: 18px; font-weight: 700; }
             QLabel#lbl_campo { color: #64748B; font-size: 12px; font-weight: 600; }

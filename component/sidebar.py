@@ -5,7 +5,14 @@ from PyQt6.QtWidgets import (
     QLabel, QPushButton, QFrame,
     QSpacerItem, QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtGui import QIcon
+
+from component.svg_utils import svg_para_pixmap
+
+
+COR_INATIVO = "#64748B"
+COR_ATIVO   = "#F26522"
 
 
 class SidebarMenu(QWidget):
@@ -16,20 +23,22 @@ class SidebarMenu(QWidget):
     """
     pagina_mudou = pyqtSignal(int)
 
+    # (arquivo SVG, texto do menu)
     ITENS_MENU = [
-        ("⊞", "Dashboard"),
-        ("🔧", "Laboratório"),
-        ("🛒", "Vendas"),
-        ("👥", "Clientes"),
-        ("🛡️", "Garantias & RMA"),
-        ("📦", "Catálogo"),
-        ("🧑‍🔧", "Técnicos"),
+        ("fi-sr-dashboard.svg",          "Dashboard"),
+        ("fi-sr-tools.svg",              "Laboratório"),
+        ("fi-sr-shopping-cart.svg",      "Vendas"),
+        ("fi-sr-users.svg",              "Clientes"),
+        ("fi-sr-shield-check.svg",       "Garantias & RMA"),
+        ("fi-sr-catalog.svg",            "Catálogo"),
+        ("fi-sr-user-helmet-safety.svg", "Técnicos"),
     ]
 
     def __init__(self, stacked_widget=None, parent=None):
         super().__init__(parent)
         self.stacked_widget = stacked_widget
         self.botoes = []
+        self._svgs   = []
         self._indice_ativo = 0
         self._initUI()
         self._aplicar_estilos()
@@ -54,13 +63,15 @@ class SidebarMenu(QWidget):
         layout.addSpacing(30)
 
         # --- Itens do Menu ---
-        for i, (icone, texto) in enumerate(self.ITENS_MENU):
-            btn = QPushButton(f"{icone}   {texto}")
+        for i, (svg_file, texto) in enumerate(self.ITENS_MENU):
+            btn = QPushButton(f"  {texto}")
+            btn.setIconSize(QSize(20, 20))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setObjectName("menu_item")
             btn.clicked.connect(lambda checked, idx=i: self.mudar_tela(idx))
             layout.addWidget(btn)
             self.botoes.append(btn)
+            self._svgs.append(svg_file)
 
         # Marca o primeiro item como ativo por padrão
         self._marcar_ativo(0)
@@ -89,7 +100,10 @@ class SidebarMenu(QWidget):
 
     def _marcar_ativo(self, index: int):
         for i, btn in enumerate(self.botoes):
-            btn.setObjectName("menu_item_ativo" if i == index else "menu_item")
+            ativo = i == index
+            btn.setObjectName("menu_item_ativo" if ativo else "menu_item")
+            cor = COR_ATIVO if ativo else COR_INATIVO
+            btn.setIcon(QIcon(svg_para_pixmap(self._svgs[i], cor)))
 
         # Força o Qt a reaplicar o QSS após a mudança de objectName
         self.style().unpolish(self)

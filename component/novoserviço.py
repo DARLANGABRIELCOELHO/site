@@ -11,28 +11,20 @@ from PyQt6.QtWidgets import (
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernWindow
 #========================================================================================================================================
 # JANELA DE CADASTRO DE NOVO SERVIÇO
 #========================================================================================================================================
 
-class NovoServicoWindow(QWidget):
+class NovoServicoWindow(ModernWindow):
     def __init__(self):
-        super().__init__()
+        super().__init__("Novo Serviço", 660, 680)
         db.inicializar_estado()
         self.campo_ativo = None
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle("Novo Serviço")
-        self.setFixedSize(700, 750)
-
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-
-        lbl_titulo = QLabel("🔧 NOVO SERVIÇO")
-        lbl_titulo.setObjectName("title")
-        main_layout.addWidget(lbl_titulo)
+        main_layout = self.content_layout
 
         grid = QGridLayout()
         grid.setSpacing(15)
@@ -95,7 +87,6 @@ class NovoServicoWindow(QWidget):
         btn_salvar.clicked.connect(self.salvar_servico)
         main_layout.addWidget(btn_salvar)
 
-        self.setLayout(main_layout)
         self.apply_styles()
 
         self.atualizar_sugestoes()

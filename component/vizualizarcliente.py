@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernDialog
 
 
 class InfoBox(QFrame):
@@ -121,20 +122,15 @@ class HistoricoItem(QFrame):
         
         layout.addLayout(right_layout)
 
-class ClienteDadosDialog(QDialog):
+class ClienteDadosDialog(ModernDialog):
     def __init__(self, cliente: dict):
-        super().__init__()
+        super().__init__(f"Perfil — {cliente.get('nome', '')}", 630, 520)
         self._cliente = cliente
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle("Perfil do Cliente - Dados")
-        self.setFixedSize(650, 500)
-        self.setModal(True)
-        
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(20)
+        main_layout = self.content_layout
+        main_layout.setSpacing(16)
 
         # --- Cabeçalho (Avatar + Nome) ---
         header_layout = QHBoxLayout()
@@ -349,12 +345,6 @@ class ClienteDadosDialog(QDialog):
 
     def aplicar_estilos(self):
         estilo = """
-        /* Fundo e Tipografia Global */
-        QDialog {
-            background-color: #0F172A;
-            font-family: 'Poppins', 'Montserrat', sans-serif;
-        }
-
         /* Avatar Laranja */
         QLabel#avatar_icon {
             background-color: rgba(242, 101, 34, 0.1); 
@@ -474,18 +464,15 @@ class ClienteDadosDialog(QDialog):
             border-radius: 6px;
         }
         """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 
 
-class EditarClienteDialog(QDialog):
+class EditarClienteDialog(ModernDialog):
     """Dialog para editar as informações de um Cliente."""
 
     def __init__(self, cliente: dict):
-        super().__init__()
+        super().__init__(f"Editar Cliente — {cliente.get('nome', '')}", 560, 500)
         self._cliente = cliente
-        self.setWindowTitle(f"Editar Cliente — {cliente.get('nome', '')}")
-        self.setFixedSize(580, 560)
-        self.setModal(True)
         self._initUI()
 
     # ──────────────────────────────────────────────
@@ -493,15 +480,7 @@ class EditarClienteDialog(QDialog):
     # ──────────────────────────────────────────────
 
     def _initUI(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(15)
-
-        # ─ Título ─
-        lbl_titulo = QLabel(f"👤 EDITAR CLIENTE #{self._cliente['id']}")
-        lbl_titulo.setObjectName("title")
-        layout.addWidget(lbl_titulo)
-        layout.addSpacing(5)
+        layout = self.content_layout
 
         # ─ Grid de campos ─
         grid = QGridLayout()
@@ -600,18 +579,7 @@ class EditarClienteDialog(QDialog):
     # ──────────────────────────────────────────────
 
     def _aplicar_estilos(self):
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #0F172A;
-                font-family: 'Poppins', 'Montserrat', sans-serif;
-            }
-
-            QLabel#title {
-                color: #FFFFFF;
-                font-size: 18px;
-                font-weight: 700;
-            }
-
+        self.setStyleSheet(self.styleSheet() + """
             QLabel#lbl_campo {
                 color: #64748B;
                 font-size: 12px;

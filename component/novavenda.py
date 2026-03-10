@@ -7,16 +7,17 @@ from datetime import datetime
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
-    QSpacerItem, QSizePolicy, QMessageBox, QFileDialog,QDialog, QComboBox, QButtonGroup, QCompleter
+    QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QComboBox, QButtonGroup, QCompleter
 )
 from PyQt6.QtCore import Qt
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernDialog
 
-class FinalizarVendaDialog(QDialog):
+class FinalizarVendaDialog(ModernDialog):
     def __init__(self, item_tipo="servico", item_id=0, descricao="Serviço ou Produto", valor_base=0.0):
-        super().__init__()
+        super().__init__("Finalizar Venda", 500, 920)
         self.item_tipo = item_tipo
         self.item_id = item_id
         self.descricao = descricao
@@ -25,20 +26,7 @@ class FinalizarVendaDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        # Configuração da Janela
-        self.setWindowTitle("Finalizar Venda")
-        self.setFixedSize(500, 950)
-        self.setModal(True)
-        
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-
-        # --- Cabeçalho ---
-        lbl_titulo = QLabel("✓ FINALIZAR VENDA")
-        lbl_titulo.setObjectName("title")
-        main_layout.addWidget(lbl_titulo)
-        main_layout.addSpacing(10)
+        main_layout = self.content_layout
 
         # --- Cliente (Opcional) ---
         lbl_cliente = QLabel("Cliente (opcional)")
@@ -217,7 +205,6 @@ class FinalizarVendaDialog(QDialog):
         self.btn_confirmar.clicked.connect(self.confirmar_venda)
 
         main_layout.addLayout(botoes_layout)
-        self.setLayout(main_layout)
 
         self.aplicar_estilos()
 
@@ -301,14 +288,6 @@ class FinalizarVendaDialog(QDialog):
 
     def aplicar_estilos(self):
         estilo = """
-        /* Fundo da Janela e Fonte Base */
-        QDialog {
-            background-color: #0F172A;
-            font-family: 'Poppins', 'Montserrat', sans-serif;
-            color: #FFFFFF;
-        }
-
-        /* Títulos e Labels */
         QLabel {
             color: #FFFFFF;
             font-size: 13px;
@@ -418,7 +397,7 @@ class FinalizarVendaDialog(QDialog):
             border: 1px solid #FFFFFF;
         }
         """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 
 # main para teste
 if __name__ == "__main__":

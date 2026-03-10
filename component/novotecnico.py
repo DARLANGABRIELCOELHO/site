@@ -10,26 +10,17 @@ from PyQt6.QtWidgets import (
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
+from component.base_dialog import ModernWindow
 
 
-class NovoTecnicoWindow(QWidget):
+class NovoTecnicoWindow(ModernWindow):
     def __init__(self):
-        super().__init__()
+        super().__init__("Novo Técnico", 480, 380)
         db.inicializar_estado()
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle("Novo Técnico")
-        self.setFixedSize(500, 500)
-
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-
-        lbl_titulo = QLabel("👤 NOVO TÉCNICO")
-        lbl_titulo.setObjectName("title")
-        main_layout.addWidget(lbl_titulo)
-        main_layout.addSpacing(10)
+        main_layout = self.content_layout
 
         grid = QGridLayout()
         grid.setSpacing(15)
@@ -73,18 +64,10 @@ class NovoTecnicoWindow(QWidget):
         self.btn_cancelar.clicked.connect(self.close)
 
         main_layout.addLayout(botoes_layout)
-        self.setLayout(main_layout)
-
         self.aplicar_estilos()
 
     def aplicar_estilos(self):
         estilo = """
-        QWidget {
-            background-color: #0F172A;
-            font-family: 'Poppins', 'Montserrat', sans-serif;
-            color: #FFFFFF;
-        }
-
         QLabel#title {
             font-size: 20px;
             font-weight: 700;
@@ -143,7 +126,7 @@ class NovoTecnicoWindow(QWidget):
             background-color: #1E293B;
         }
         """
-        self.setStyleSheet(estilo)
+        self.setStyleSheet(self.styleSheet() + estilo)
 #========================================================================================================================================
     # Exemplo de implementação do método salvar_tecnico
 #========================================================================================================================================

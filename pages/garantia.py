@@ -15,6 +15,56 @@ import data.database as db
 
 
 # ──────────────────────────────────────────────
+# Card de OS Cancelada (RMA)
+# ──────────────────────────────────────────────
+
+class RMACard(QFrame):
+    """Card de uma OS cancelada / retorno RMA."""
+    def __init__(self, ordem: dict):
+        super().__init__()
+        self.setObjectName("garantia_card")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(10)
+
+        top = QHBoxLayout()
+        lbl_cliente = QLabel(ordem.get("cliente_nome") or "Balcão")
+        lbl_cliente.setObjectName("g_cliente")
+        lbl_os = QLabel(f"OS #{ordem.get('id', '?')}")
+        lbl_os.setObjectName("g_tag_cancelada")
+        top.addWidget(lbl_cliente)
+        top.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        top.addWidget(lbl_os)
+        layout.addLayout(top)
+
+        modelo = ordem.get("modelo", "—")
+        cor = (ordem.get("cor") or "").strip()
+        lbl_modelo = QLabel(f"📱 {modelo}{' • ' + cor if cor else ''}")
+        lbl_modelo.setObjectName("g_modelo")
+        layout.addWidget(lbl_modelo)
+
+        tec = ordem.get("tecnico_nome") or "Sem técnico"
+        lbl_tec = QLabel(f"🔧 {tec}")
+        lbl_tec.setObjectName("g_info")
+        layout.addWidget(lbl_tec)
+
+        data_term = (ordem.get("data_termino") or "")[:10]
+        data_cad  = (ordem.get("data_cadastro") or "")[:10]
+        lbl_data = QLabel(f"Abertura: {data_cad or '—'}   •   Cancelamento: {data_term or '—'}")
+        lbl_data.setObjectName("g_info")
+        layout.addWidget(lbl_data)
+
+        valor = float(ordem.get("total_servicos") or 0)
+        if valor > 0:
+            lbl_valor = QLabel(
+                f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+            lbl_valor.setObjectName("g_valor")
+            layout.addWidget(lbl_valor)
+
+
+# ──────────────────────────────────────────────
 # COMPONENTES
 # ──────────────────────────────────────────────
 
@@ -206,12 +256,19 @@ class GarantiasRMAScreen(QWidget):
     # ─ Lógica ─────────────────────────────────
 
     def _carregar_garantias(self, filtro: str = ""):
-        # Limpa grid
         for i in reversed(range(self.grid.count())):
             w = self.grid.itemAt(i).widget()
             if w:
                 w.deleteLater()
 
+        aba = self.grupo_abas.checkedId()
+
+        if aba == 0:
+            self._carregar_coberturas(filtro)
+        else:
+            self._carregar_rma(filtro)
+
+    def _carregar_coberturas(self, filtro: str):
         garantias = db.listar_garantias_ativas()
 
         if filtro:
@@ -223,7 +280,6 @@ class GarantiasRMAScreen(QWidget):
                 or f in (g.get("modelo") or "").lower()
             ]
 
-        # Atualiza stats
         total = len(garantias)
         vencendo = sum(
             1 for g in garantias
@@ -254,8 +310,35 @@ class GarantiasRMAScreen(QWidget):
                 col = 0
                 row += 1
 
+    def _carregar_rma(self, filtro: str):
+        ordens = db.listar_ordens_servico(filtro=filtro, status="cancelada")
+
+        total_rma = len(ordens)
+        valor_rma = sum(float(o.get("total_servicos") or 0) for o in ordens)
+
+        self.card_ativas.lbl_valor.setText(str(total_rma))
+        self.card_vencendo.lbl_valor.setText("—")
+        self.card_custo.lbl_valor.setText(
+            f"R$ {valor_rma:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+
+        if not ordens:
+            lbl = QLabel("Nenhum retorno (RMA) encontrado.")
+            lbl.setObjectName("empty_text")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.grid.addWidget(lbl, 0, 0, 1, 2)
+            return
+
+        row, col = 0, 0
+        for o in ordens:
+            card = RMACard(o)
+            self.grid.addWidget(card, row, col)
+            col += 1
+            if col > 1:
+                col = 0
+                row += 1
+
     def _mudar_aba(self, index: int):
-        # Aba 1 (RMA) ainda sem implementação — mostra estado vazio
         self._carregar_garantias(filtro=self.edit_busca.text())
 
     # ─ Estilos ────────────────────────────────
@@ -335,6 +418,14 @@ class GarantiasRMAScreen(QWidget):
         QLabel#g_tag {
             background-color: rgba(242,101,34,0.1);
             color: #F26522;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
+            padding: 3px 8px;
+        }
+        QLabel#g_tag_cancelada {
+            background-color: rgba(239,68,68,0.1);
+            color: #F87171;
             font-size: 10px;
             font-weight: 700;
             border-radius: 4px;
