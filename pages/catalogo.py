@@ -654,7 +654,12 @@ class CatalogoScreen(QWidget):
         self._carregar()
 
     def _abrir_novo(self):
-        if self._aba_ativa == 1:
+        if self._aba_ativa == 0:
+            from component.novoserviço import NovoServicoWindow
+            self._janela_novo = NovoServicoWindow()
+            self._janela_novo.show()
+            self._janela_novo.destroyed.connect(self._carregar)
+        elif self._aba_ativa == 1:
             from component.novoproduto import NovoProdutoWindow
             self._janela_novo = NovoProdutoWindow()
             self._janela_novo.show()
