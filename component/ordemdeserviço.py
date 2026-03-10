@@ -16,12 +16,19 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QScrollArea,
     QButtonGroup, QComboBox, QTabWidget, QCompleter
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon, QAction
 
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 from component.base_dialog import ModernDialog
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
 
 # ============================================================================
 # COMPONENTES REUTILIZÁVEIS
@@ -188,7 +195,10 @@ class AbaCliente(QWidget):
         layout.addLayout(layout_balcao)
 
         self.edit_busca = QLineEdit()
-        self.edit_busca.setPlaceholderText("🔍 Buscar por nome ou telefone...")
+        self.edit_busca.setPlaceholderText("Buscar por nome ou telefone...")
+        if _SVG_OK:
+            _act = QAction(QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 16, 16)), "", self.edit_busca)
+            self.edit_busca.addAction(_act, QLineEdit.ActionPosition.LeadingPosition)
         layout.addWidget(self.edit_busca)
 
         scroll_area = QScrollArea()
@@ -451,7 +461,10 @@ class AbaServicos(QWidget):
         layout.setSpacing(15)
 
         self.edit_busca = QLineEdit()
-        self.edit_busca.setPlaceholderText("🔍 Buscar serviço...")
+        self.edit_busca.setPlaceholderText("Buscar serviço...")
+        if _SVG_OK:
+            _act = QAction(QIcon(svg_para_pixmap("fi-sr-search.svg", "#64748B", 16, 16)), "", self.edit_busca)
+            self.edit_busca.addAction(_act, QLineEdit.ActionPosition.LeadingPosition)
         layout.addWidget(self.edit_busca)
 
         scroll_area = QScrollArea()
@@ -543,10 +556,16 @@ class NovaOrdemServicoWindow(ModernDialog):
         self.aba_checklist = AbaChecklist()
         self.aba_servicos = AbaServicos()
         
-        self.tab_widget.addTab(self.aba_cliente, "👤 Cliente")
-        self.tab_widget.addTab(self.aba_aparelho, "📱 Aparelho")
-        self.tab_widget.addTab(self.aba_checklist, "📋 Checklist")
-        self.tab_widget.addTab(self.aba_servicos, "🔧 Serviços")
+        if _SVG_OK:
+            self.tab_widget.addTab(self.aba_cliente,   QIcon(svg_para_pixmap("fi-sr-user.svg",       "#64748B", 14, 14)), "Cliente")
+            self.tab_widget.addTab(self.aba_aparelho,  QIcon(svg_para_pixmap("fi-sr-smartphone.svg", "#64748B", 14, 14)), "Aparelho")
+            self.tab_widget.addTab(self.aba_checklist, QIcon(svg_para_pixmap("fi-sr-checklist-task-budget.svg", "#64748B", 14, 14)), "Checklist")
+            self.tab_widget.addTab(self.aba_servicos,  QIcon(svg_para_pixmap("fi-sr-tools.svg",      "#64748B", 14, 14)), "Serviços")
+        else:
+            self.tab_widget.addTab(self.aba_cliente,   "👤 Cliente")
+            self.tab_widget.addTab(self.aba_aparelho,  "📱 Aparelho")
+            self.tab_widget.addTab(self.aba_checklist, "📋 Checklist")
+            self.tab_widget.addTab(self.aba_servicos,  "🔧 Serviços")
 
         self.aba_aparelho.edit_modelo.currentTextChanged.connect(self.atualizar_servicos_por_modelo)
 
@@ -565,7 +584,12 @@ class NovaOrdemServicoWindow(ModernDialog):
         self.btn_cancelar = QPushButton("Cancelar")
         self.btn_cancelar.setObjectName("btnCancelar")
         
-        self.btn_criar_os = QPushButton("+ Criar OS")
+        self.btn_criar_os = QPushButton("Criar OS")
+        if _SVG_OK:
+            self.btn_criar_os.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_criar_os.setIconSize(QSize(16, 16))
+        else:
+            self.btn_criar_os.setText("+ Criar OS")
         self.btn_criar_os.setObjectName("btnConfirmar")
         
         botoes_layout.addWidget(self.btn_cancelar)

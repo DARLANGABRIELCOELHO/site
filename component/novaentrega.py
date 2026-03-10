@@ -9,12 +9,18 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QSizePolicy, QMessageBox, QComboBox,
     QScrollArea, QWidget
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QDoubleValidator
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QDoubleValidator, QIcon
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 from component.base_dialog import ModernDialog
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
 
 
 class NovaEntregaWindow(ModernDialog):
@@ -176,7 +182,12 @@ class NovaEntregaWindow(ModernDialog):
         btns.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
         self.btn_cancelar = QPushButton("Cancelar")
         self.btn_cancelar.setObjectName("btnCancelar")
-        self.btn_confirmar = QPushButton("✓ Confirmar Entrega")
+        self.btn_confirmar = QPushButton("Confirmar Entrega")
+        if _SVG_OK:
+            self.btn_confirmar.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_confirmar.setIconSize(QSize(16, 16))
+        else:
+            self.btn_confirmar.setText("✓ Confirmar Entrega")
         self.btn_confirmar.setObjectName("btnConfirmar")
         self.btn_cancelar.clicked.connect(self.reject)
         self.btn_confirmar.clicked.connect(self._confirmar)

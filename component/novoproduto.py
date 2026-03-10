@@ -148,7 +148,7 @@ class NovoProdutoWindow(ModernWindow):
                 border: 1px solid #FFFFFF;
             }
         """
-        self.setStyleSheet(self.styleSheet() + estilo)
+        self._card.setStyleSheet(self._card.styleSheet() + estilo)
 #========================================================================================================================================
     # Exemplo de implementação do método salvar_produto 
 #========================================================================================================================================

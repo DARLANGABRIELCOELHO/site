@@ -126,7 +126,7 @@ class NovoTecnicoWindow(ModernWindow):
             background-color: #1E293B;
         }
         """
-        self.setStyleSheet(self.styleSheet() + estilo)
+        self._card.setStyleSheet(self._card.styleSheet() + estilo)
 #========================================================================================================================================
     # Exemplo de implementação do método salvar_tecnico
 #========================================================================================================================================

@@ -9,11 +9,18 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QMessageBox, QFileDialog, QComboBox, QButtonGroup, QCompleter
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon
 # Adiciona o diretório pai ao sys.path para encontrar o pacote 'data'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 from component.base_dialog import ModernDialog
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
 
 class FinalizarVendaDialog(ModernDialog):
     def __init__(self, item_tipo="servico", item_id=0, descricao="Serviço ou Produto", valor_base=0.0):
@@ -83,23 +90,26 @@ class FinalizarVendaDialog(ModernDialog):
         self.grupo_pagamento = QButtonGroup(self)
         
         opcoes_pagamento = [
-            ("❖\nPIX", 1), 
-            ("💵\nDinheiro", 2), 
-            ("💳\nCrédito", 3), 
-            ("💳\nDébito", 4)
+            {"texto": "PIX",     "svg": "fi-sr-qrcode.svg",       "id": 1},
+            {"texto": "Dinheiro","svg": "fi-sr-money-bills.svg",   "id": 2},
+            {"texto": "Crédito", "svg": "fi-sr-credit-card.svg",   "id": 3},
+            {"texto": "Débito",  "svg": "fi-sr-credit-card.svg",   "id": 4},
         ]
         
-        for texto, id_btn in opcoes_pagamento:
-            btn = QPushButton(texto)
+        for op in opcoes_pagamento:
+            btn = QPushButton(op["texto"])
             btn.setObjectName("btn_pagamento")
             btn.setCheckable(True)
             btn.setFixedHeight(70)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            self.grupo_pagamento.addButton(btn, id_btn)
+            if _SVG_OK:
+                btn.setIcon(QIcon(svg_para_pixmap(op["svg"], "#64748B", 20, 20)))
+                btn.setIconSize(QSize(20, 20))
+            self.grupo_pagamento.addButton(btn, op["id"])
             layout_pagamento.addWidget(btn)
             
             # Deixa o Crédito selecionado por padrão
-            if id_btn == 3:
+            if op["id"] == 3:
                 btn.setChecked(True)
                 
         main_layout.addLayout(layout_pagamento)
@@ -195,7 +205,12 @@ class FinalizarVendaDialog(ModernDialog):
         self.btn_cancelar = QPushButton("Cancelar")
         self.btn_cancelar.setObjectName("btnCancelar")
         
-        self.btn_confirmar = QPushButton("✓ Confirmar Venda")
+        self.btn_confirmar = QPushButton("Confirmar Venda")
+        if _SVG_OK:
+            self.btn_confirmar.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_confirmar.setIconSize(QSize(16, 16))
+        else:
+            self.btn_confirmar.setText("✓ Confirmar Venda")
         self.btn_confirmar.setObjectName("btnConfirmar")
         
         botoes_layout.addWidget(self.btn_cancelar)

@@ -187,7 +187,7 @@ class NovoCelularWindow(ModernWindow):
             border: 1px solid #F26522;
         }
         """
-        self.setStyleSheet(self.styleSheet() + estilo)
+        self._card.setStyleSheet(self._card.styleSheet() + estilo)
 
     def selecionar_fotos(self):
         arquivos, _ = QFileDialog.getOpenFileNames(

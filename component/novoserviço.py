@@ -1,30 +1,71 @@
 # novoserviço.py
 # Interface gráfica para cadastro de novo serviço (PyQt6)
+
 import sys
 import os
 from datetime import datetime
+
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QGridLayout,
+    QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QPushButton,
-    QMessageBox, QListWidget
+    QMessageBox, QListWidget, QListWidgetItem, QFrame
 )
+from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtGui import QIcon
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
-from component.base_dialog import ModernWindow
-#========================================================================================================================================
-# JANELA DE CADASTRO DE NOVO SERVIÇO
-#========================================================================================================================================
 
-class NovoServicoWindow(ModernWindow):
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
+
+
+# ========================================================================================================================================
+# JANELA DE CADASTRO DE NOVO SERVIÇO
+# ========================================================================================================================================
+
+class NovoServicoWindow(QWidget):
     def __init__(self):
-        super().__init__("Novo Serviço", 660, 680)
+        super().__init__()
         db.inicializar_estado()
         self.campo_ativo = None
+        self.drag_pos = None
         self.initUI()
 
     def initUI(self):
-        main_layout = self.content_layout
+        self.setWindowTitle("Novo Serviço")
+        self.setFixedSize(700, 750)
+
+        # Remove a title bar nativa
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
+
+        # Cabeçalho customizado
+        header = QFrame()
+        header.setObjectName("header")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.lbl_titulo = QLabel(" NOVO SERVIÇO")
+        self.lbl_titulo.setObjectName("title")
+
+        btn_fechar = QPushButton("✕")
+        btn_fechar.setObjectName("btnFechar")
+        btn_fechar.setFixedSize(36, 36)
+        btn_fechar.clicked.connect(self.close)
+
+        header_layout.addWidget(self.lbl_titulo)
+        header_layout.addStretch()
+        header_layout.addWidget(btn_fechar)
+
+        main_layout.addWidget(header)
 
         grid = QGridLayout()
         grid.setSpacing(15)
@@ -59,7 +100,7 @@ class NovoServicoWindow(ModernWindow):
         self.edit_categoria.textChanged.connect(self.atualizar_sugestoes)
         self.edit_modelo_celular.textChanged.connect(self.gerar_nome_automatico)
         self.edit_categoria.textChanged.connect(self.gerar_nome_automatico)
-        
+
         # Conecta clique na lista de sugestões
         self.lista_resultados.itemClicked.connect(self.aplicar_sugestao)
 
@@ -84,12 +125,14 @@ class NovoServicoWindow(ModernWindow):
 
         # Botão salvar
         btn_salvar = QPushButton("Salvar")
+        btn_salvar.setObjectName("btnSalvar")
         btn_salvar.clicked.connect(self.salvar_servico)
         main_layout.addWidget(btn_salvar)
 
+        self.setLayout(main_layout)
         self.apply_styles()
-
         self.atualizar_sugestoes()
+
     def definir_campo_ativo(self, campo, event, original_focus):
         self.campo_ativo = campo
         original_focus(event)
@@ -103,17 +146,27 @@ class NovoServicoWindow(ModernWindow):
             self.edit_nome_servico.setText(nome_sugerido)
 
     def aplicar_sugestao(self, item):
-        texto = item.text()
-        if self.campo_ativo == 'modelo' and texto.startswith("📱"):
-            modelo = texto[2:].strip()
-            self.edit_modelo_celular.setText(modelo)
-        elif self.campo_ativo == 'categoria' and texto.startswith("📂"):
-            categoria = texto[2:].strip()
-            self.edit_categoria.setText(categoria)
+        # Texto limpo guardado em UserRole (sem emoji nem prefixo)
+        texto = item.data(Qt.ItemDataRole.UserRole) or item.text()
+        if self.campo_ativo == 'modelo':
+            self.edit_modelo_celular.setText(texto)
+        elif self.campo_ativo == 'categoria':
+            self.edit_categoria.setText(texto)
         self.gerar_nome_automatico()
 
-# Atualiza a lista de resultados com base nos filtros de modelo e categoria
     def atualizar_sugestoes(self):
+        # Ícones SVG
+        _ico_modelo    = QIcon(svg_para_pixmap("fi-sr-smartphone.svg",  "#F26522", 16, 16)) if _SVG_OK else None
+        _ico_categoria = QIcon(svg_para_pixmap("fi-sr-folder.svg",      "#64748B", 16, 16)) if _SVG_OK else None
+        _ico_servico   = QIcon(svg_para_pixmap("fi-sr-tools.svg",       "#64748B", 16, 16)) if _SVG_OK else None
+
+        def _item(texto, icone=None):
+            it = QListWidgetItem(texto)
+            it.setData(Qt.ItemDataRole.UserRole, texto)  # guarda texto limpo
+            if icone:
+                it.setIcon(icone)
+            return it
+
         if self.campo_ativo == 'modelo':
             termo = self.edit_modelo_celular.text().strip()
             sugestoes = db.obter_modelos_distintos(termo)
@@ -122,7 +175,8 @@ class NovoServicoWindow(ModernWindow):
                 self.lista_resultados.addItem("Nenhum modelo encontrado.")
                 return
             for modelo in sugestoes:
-                self.lista_resultados.addItem(f"📱 {modelo}")
+                self.lista_resultados.addItem(_item(modelo, _ico_modelo))
+
         elif self.campo_ativo == 'categoria':
             termo = self.edit_categoria.text().strip()
             sugestoes = db.obter_categorias_distintas(termo)
@@ -131,9 +185,9 @@ class NovoServicoWindow(ModernWindow):
                 self.lista_resultados.addItem("Nenhuma categoria encontrada.")
                 return
             for categoria in sugestoes:
-                self.lista_resultados.addItem(f"📂 {categoria}")
+                self.lista_resultados.addItem(_item(categoria, _ico_categoria))
+
         else:
-            # Comportamento original
             modelo = self.edit_modelo_celular.text().strip()
             categoria = self.edit_categoria.text().strip()
             resultados = db.pesquisar_servicos(modelo, categoria)
@@ -142,18 +196,37 @@ class NovoServicoWindow(ModernWindow):
                 self.lista_resultados.addItem("Nenhum serviço encontrado.")
                 return
             for servico in resultados:
-                texto = f"ID: {servico['id']} | {servico['nome']} | {servico['modelo_celular']} | {servico['categoria']} | R$ {servico['preco']}"
-                self.lista_resultados.addItem(texto)
-# Aplica estilos 
+                texto = f"{servico['nome']}  |  {servico['modelo_celular']}  |  {servico['categoria']}  |  R$ {servico['preco']}"
+                self.lista_resultados.addItem(_item(texto, _ico_servico))
+
     def apply_styles(self):
         estilo = """
+        NovoServicoWindow {
+            background-color: #0F172A;
+            font-family: 'Poppins', 'Montserrat', sans-serif;
+        }
+        NovoServicoWindow * {
+            font-family: 'Poppins', 'Montserrat', sans-serif;
+            color: #FFFFFF;
+        }
+
+        QFrame#header {
+            background-color: transparent;
+        }
+
+        QLabel#title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
         QLabel {
             font-size: 12px;
             font-weight: 600;
             color: #64748B;
         }
 
-        QLineEdit, QTextEdit {
+        QLineEdit, QTextEdit, QListWidget {
             background-color: #0B1120;
             border: 1px solid #1E293B;
             border-radius: 6px;
@@ -162,20 +235,8 @@ class NovoServicoWindow(ModernWindow):
             font-size: 14px;
         }
 
-        QLineEdit:focus, QTextEdit:focus {
+        QLineEdit:focus, QTextEdit:focus, QListWidget:focus {
             border: 1px solid #F26522;
-        }
-
-        QListWidget {
-            background-color: #0B1120;
-            border: 1px solid #1E293B;
-            border-radius: 6px;
-            color: #FFFFFF;
-            font-size: 13px;
-        }
-
-        QListWidget::item:selected {
-            background-color: #F26522;
         }
 
         QPushButton {
@@ -191,9 +252,28 @@ class NovoServicoWindow(ModernWindow):
         QPushButton:hover {
             background-color: #E05412;
         }
+
+        QPushButton#btnFechar {
+            background-color: transparent;
+            border: 1px solid #334155;
+            color: #FFFFFF;
+            padding: 0;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 8px;
+        }
+
+        QPushButton#btnFechar:hover {
+            background-color: #7F1D1D;
+            border: 1px solid #EF4444;
+        }
+
+        QPushButton#btnSalvar {
+            margin-top: 10px;
+        }
         """
-        self.setStyleSheet(self.styleSheet() + estilo)
-# Exemplo de implementação do método salvar_servico
+        self.setStyleSheet(estilo)
+
     def salvar_servico(self):
         nome = self.edit_nome_servico.text().strip()
         modelo_celular = self.edit_modelo_celular.text().strip()
@@ -236,6 +316,22 @@ class NovoServicoWindow(ModernWindow):
 
         QMessageBox.information(self, "Sucesso", "Serviço cadastrado com sucesso!")
         self.close()
+
+    # Arrastar a janela sem title bar
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self.drag_pos is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self.drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self.drag_pos = None
+        event.accept()
+
 
 # MAIN
 if __name__ == "__main__":

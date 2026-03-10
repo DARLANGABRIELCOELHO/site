@@ -7,11 +7,18 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QTextEdit, QPushButton, QFrame,
     QSpacerItem, QSizePolicy, QMessageBox, QButtonGroup
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import data.database as db
 from component.base_dialog import ModernDialog
+
+try:
+    from component.svg_utils import svg_para_pixmap
+    _SVG_OK = True
+except Exception:
+    _SVG_OK = False
 
 
 class InfoBox(QFrame):
@@ -27,8 +34,20 @@ class InfoBox(QFrame):
         
         # --- Linha Superior (Ícone + Rótulo) ---
         top_layout = QHBoxLayout()
-        lbl_icone = QLabel(icone)
+        lbl_icone = QLabel()
         lbl_icone.setObjectName("info_icone")
+        # icone pode ser uma chave de SVG (str sem emoji) ou emoji fallback
+        _SVG_MAP = {
+            "phone":   "fi-sr-phone-call.svg",
+            "email":   "fi-sr-envelope.svg",
+            "doc":     "fi-sr-document.svg",
+            "tag":     "fi-sr-tag.svg",
+        }
+        svg_file = _SVG_MAP.get(icone, "")
+        if _SVG_OK and svg_file:
+            lbl_icone.setPixmap(svg_para_pixmap(svg_file, "#64748B", 14, 14))
+        else:
+            lbl_icone.setText(icone)
         
         lbl_titulo = QLabel(titulo)
         lbl_titulo.setObjectName("info_label")
@@ -82,9 +101,14 @@ class HistoricoItem(QFrame):
         layout.setSpacing(15)
 
         # --- Ícone da Esquerda ---
-        lbl_icone = QLabel(icone)
+        lbl_icone = QLabel()
         lbl_icone.setObjectName("icone_servico")
         lbl_icone.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # icone é um arquivo SVG (ex: "fi-sr-tools.svg") ou emoji
+        if _SVG_OK and icone.endswith(".svg"):
+            lbl_icone.setPixmap(svg_para_pixmap(icone, "#F26522", 20, 20))
+        else:
+            lbl_icone.setText(icone)
         layout.addWidget(lbl_icone)
 
         # --- Informações Centrais (Título e Data) ---
@@ -135,9 +159,13 @@ class ClienteDadosDialog(ModernDialog):
         # --- Cabeçalho (Avatar + Nome) ---
         header_layout = QHBoxLayout()
         
-        lbl_avatar = QLabel("👤")
+        lbl_avatar = QLabel()
         lbl_avatar.setObjectName("avatar_icon")
         lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if _SVG_OK:
+            lbl_avatar.setPixmap(svg_para_pixmap("fi-sr-user.svg", "#F26522", 24, 24))
+        else:
+            lbl_avatar.setText("👤")
         
         lbl_nome = QLabel(self._cliente.get("nome", ""))
         lbl_nome.setObjectName("title_main")
@@ -157,13 +185,19 @@ class ClienteDadosDialog(ModernDialog):
         
         self.grupo_toggle = QButtonGroup(self)
         
-        btn_dados = QPushButton("📄 Dados")
+        btn_dados = QPushButton("  Dados")
+        if _SVG_OK:
+            btn_dados.setIcon(QIcon(svg_para_pixmap("fi-sr-document.svg", "#64748B", 14, 14)))
+            btn_dados.setIconSize(QSize(14, 14))
         btn_dados.setCheckable(True)
-        btn_dados.setChecked(True) # Aba DADOS ativa
+        btn_dados.setChecked(True)
         btn_dados.setObjectName("btn_toggle")
         btn_dados.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        btn_historico = QPushButton("🕒 Histórico")
+        btn_historico = QPushButton("  Histórico")
+        if _SVG_OK:
+            btn_historico.setIcon(QIcon(svg_para_pixmap("fi-sr-clock.svg", "#64748B", 14, 14)))
+            btn_historico.setIconSize(QSize(14, 14))
         btn_historico.setCheckable(True)
         btn_historico.setObjectName("btn_toggle")
         btn_historico.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -212,10 +246,10 @@ class ClienteDadosDialog(ModernDialog):
         is_vip = self.historico["ltv"] > 500
         tag = "VIP" if is_vip else "REGULAR"
         
-        box_telefone = InfoBox("📞", "Telefone", telefone)
-        box_email = InfoBox("✉️", "E-mail", email)
-        box_doc = InfoBox("📄", "CPF/CNPJ", documento)
-        box_tags = InfoBox("🏷️", "Tags", tag, is_tag=True)
+        box_telefone = InfoBox("phone", "Telefone", telefone)
+        box_email    = InfoBox("email", "E-mail",   email)
+        box_doc      = InfoBox("doc",   "CPF/CNPJ", documento)
+        box_tags     = InfoBox("tag",   "Tags",     tag, is_tag=True)
         
         grid_info.addWidget(box_telefone, 0, 0)
         grid_info.addWidget(box_email, 0, 1)
@@ -288,7 +322,7 @@ class ClienteDadosDialog(ModernDialog):
             # Definir cores por status (pode ajustar conforme a necessidade)
             cor_status = "#EAB308" # Amarelo (Pendente, etc)
             bg_status = "rgba(234, 179, 8, 0.1)"
-            icone = "🔧"
+            icone = "fi-sr-tools.svg"
             
             if status_os.lower() in ["entregue", "concluído", "pronto"]:
                 cor_status = "#4ADE80"
@@ -296,6 +330,7 @@ class ClienteDadosDialog(ModernDialog):
             elif status_os.lower() in ["cancelado", "cancelada"]:
                 cor_status = "#EF4444"
                 bg_status = "rgba(239, 68, 68, 0.1)"
+                icone = "fi-sr-ban.svg"
                 
             itens.append({
                 "data_raw": data_str,
@@ -320,7 +355,7 @@ class ClienteDadosDialog(ModernDialog):
             itens.append({
                 "data_raw": data_str,
                 "data_formatada": data_formatada,
-                "icone": "📦",
+                "icone": "fi-sr-box.svg",
                 "titulo": f"Venda Balcão #{venda['id']}",
                 "status": "Concluído",
                 "preco": f"R$ {float(venda.get('valor_total', 0) or 0):.2f}",
@@ -530,7 +565,12 @@ class EditarClienteDialog(ModernDialog):
         self.btn_cancelar.setObjectName("btnCancelar")
         self.btn_cancelar.clicked.connect(self.reject)
 
-        self.btn_salvar = QPushButton("✓ Salvar Alterações")
+        self.btn_salvar = QPushButton("Salvar Alterações")
+        if _SVG_OK:
+            self.btn_salvar.setIcon(QIcon(svg_para_pixmap("fi-sr-check.svg", "#FFFFFF", 16, 16)))
+            self.btn_salvar.setIconSize(QSize(16, 16))
+        else:
+            self.btn_salvar.setText("✓ Salvar Alterações")
         self.btn_salvar.setObjectName("btnSalvar")
         self.btn_salvar.clicked.connect(self._salvar)
 
