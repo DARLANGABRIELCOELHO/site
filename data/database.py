@@ -371,7 +371,7 @@ def calcular_controle_kpis(data_inicio: str = None) -> dict:
 
 
 def calcular_kpis_tecnicos(data_inicio: str = None) -> list:
-    """Retorna lista de {nome, faturamento, gastos, lucro} por técnico."""
+    """Retorna lista de {nome, faturamento, gastos, lucro, lucro_liquido, ticket_medio} por técnico."""
     filtro_oe = "AND oe.data >= ?" if data_inicio else ""
     filtro_os = "AND os.data_cadastro >= ?" if data_inicio else ""
     args      = (data_inicio,) if data_inicio else ()
@@ -386,13 +386,15 @@ def calcular_kpis_tecnicos(data_inicio: str = None) -> list:
         resultado = []
         for t in tecnicos:
             tid = t["id"]
-            # Faturamento = soma das OS entregues pelo técnico
+            # Faturamento + contagem de OS entregues pelo técnico
             c.execute(f"""
-                SELECT COALESCE(SUM(oe.valor_total),0) AS fat
+                SELECT COUNT(*) AS qtd, COALESCE(SUM(oe.valor_total),0) AS fat
                 FROM ordem_entrega oe
                 WHERE oe.tecnico_id = ? {filtro_oe}
             """, (tid, *args))
-            fat = dict(c.fetchone())["fat"]
+            row = dict(c.fetchone())
+            fat = row["fat"]
+            qtd = row["qtd"]
 
             # Gastos = custo dos serviços nas OS do técnico
             c.execute(f"""
@@ -403,12 +405,17 @@ def calcular_kpis_tecnicos(data_inicio: str = None) -> list:
             """, (tid, *args))
             gastos = dict(c.fetchone())["gastos"]
 
+            lucro        = fat - gastos
+            ticket_medio = fat / qtd if qtd > 0 else 0.0
+
             resultado.append({
-                "nome":        t["nome"],
-                "faturamento": brl(fat),
-                "gastos":      brl(gastos),
-                "lucro":       brl(fat - gastos),
-                "fat_raw":     fat,
+                "nome":          t["nome"],
+                "faturamento":   brl(fat),
+                "gastos":        brl(gastos),
+                "lucro":         brl(lucro),
+                "lucro_liquido": brl(lucro),
+                "ticket_medio":  brl(ticket_medio),
+                "qtd_os":        qtd,
             })
 
     return resultado

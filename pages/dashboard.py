@@ -169,10 +169,11 @@ class DashboardCard(QFrame):
 # ──────────────────────────────────────────────
 
 class TecnicoCard(QFrame):
-    def __init__(self, nome: str, faturamento: str, gastos: str, lucro: str):
+    def __init__(self, nome: str, faturamento: str, gastos: str,
+                 lucro: str, lucro_liquido: str, ticket_medio: str):
         super().__init__()
         self.setObjectName("card_tecnico")
-        self.setFixedSize(280, 160)
+        self.setFixedSize(310, 200)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 16)
@@ -201,13 +202,13 @@ class TecnicoCard(QFrame):
         sep.setObjectName("separator")
         layout.addWidget(sep)
 
-        # Stats: Faturamento | Gastos | Lucro
-        stats = QHBoxLayout()
-        stats.setSpacing(0)
+        # Linha 1: Faturamento | Gastos | Lucro
+        row1 = QHBoxLayout()
+        row1.setSpacing(0)
         for label, val, cor in [
-            ("Faturamento", faturamento, "#4ADE80"),
-            ("Gastos",      gastos,      "#EF4444"),
-            ("Lucro",       lucro,       "#38BDF8"),
+            ("Faturamento",   faturamento,   "#4ADE80"),
+            ("Gastos",        gastos,        "#EF4444"),
+            ("Lucro",         lucro,         "#38BDF8"),
         ]:
             col = QVBoxLayout()
             col.setSpacing(2)
@@ -219,8 +220,29 @@ class TecnicoCard(QFrame):
             lbl_v.setWordWrap(True)
             col.addWidget(lbl_l)
             col.addWidget(lbl_v)
-            stats.addLayout(col)
-        layout.addLayout(stats)
+            row1.addLayout(col)
+        layout.addLayout(row1)
+
+        # Linha 2: Ticket Médio | Lucro Líquido
+        row2 = QHBoxLayout()
+        row2.setSpacing(0)
+        for label, val, cor in [
+            ("Ticket Médio",  ticket_medio,  "#EAB308"),
+            ("Lucro Líquido", lucro_liquido, "#A78BFA"),
+        ]:
+            col = QVBoxLayout()
+            col.setSpacing(2)
+            lbl_l = QLabel(label)
+            lbl_l.setObjectName("tec_stat_label")
+            lbl_v = QLabel(val)
+            lbl_v.setObjectName("tec_stat_val")
+            lbl_v.setStyleSheet(f"color: {cor};")
+            lbl_v.setWordWrap(True)
+            col.addWidget(lbl_l)
+            col.addWidget(lbl_v)
+            row2.addLayout(col)
+        row2.addItem(QSpacerItem(10, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        layout.addLayout(row2)
 
 
 # ──────────────────────────────────────────────
@@ -402,12 +424,12 @@ class DashboardScreen(QWidget):
         self._content_layout.addWidget(_section_label("Técnicos"))
         self._content_layout.addWidget(_separator())
 
-        tec_container = QWidget()
-        self._tec_grid = QGridLayout(tec_container)
+        self._tec_container = QWidget()
+        self._tec_grid = QGridLayout(self._tec_container)
         self._tec_grid.setSpacing(16)
         self._tec_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self._tec_grid.setContentsMargins(0, 0, 0, 0)
-        self._content_layout.addWidget(tec_container)
+        self._content_layout.addWidget(self._tec_container)
 
         self._content_layout.addItem(
             QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -490,7 +512,10 @@ class DashboardScreen(QWidget):
                 return
             row, col = 0, 0
             for t in tecnicos:
-                card = TecnicoCard(t["nome"], t["faturamento"], t["gastos"], t["lucro"])
+                card = TecnicoCard(
+                    t["nome"], t["faturamento"], t["gastos"],
+                    t["lucro"], t["lucro_liquido"], t["ticket_medio"]
+                )
                 self._tec_grid.addWidget(card, row, col)
                 col += 1
                 if col >= 4:
@@ -602,6 +627,6 @@ class DashboardScreen(QWidget):
             font-size: 14px;
         }
         QLabel#tec_nome       { color: #FFFFFF; font-size: 13px; font-weight: 700; }
-        QLabel#tec_stat_label { color: #64748B; font-size: 9px; font-weight: 600; text-transform: uppercase; }
+        QLabel#tec_stat_label { color: #64748B; font-size: 10px; font-weight: 600; text-transform: uppercase; }
         QLabel#tec_stat_val   { font-size: 11px; font-weight: 700; }
         """)
