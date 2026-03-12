@@ -79,7 +79,7 @@ class ClienteCRMCard(QFrame):
                 acao_ver.setIcon(QIcon(svg_para_pixmap("fi-sr-eye.svg", "#94A3B8", 14, 14)))
                 acao_editar.setIcon(QIcon(svg_para_pixmap("fi-sr-pencil.svg", "#94A3B8", 14, 14)))
                 acao_excluir.setIcon(QIcon(svg_para_pixmap("fi-sr-trash.svg", "#F87171", 14, 14)))
-            acao_ver.triggered.connect(lambda: on_ver(cliente))
+            acao_ver.triggered.connect(lambda: on_vizualizar(cliente))
             acao_editar.triggered.connect(lambda: on_editar(cliente))
             acao_excluir.triggered.connect(lambda: on_excluir(cliente["id"]))
             menu.addAction(acao_ver)

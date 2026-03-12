@@ -330,8 +330,17 @@ class LaboratorioScreen(QWidget):
         btn_nova_os.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_nova_os.clicked.connect(self._abrir_nova_os)
 
+        btn_hist_entregas = QPushButton("Histórico de Entregas")
+        btn_hist_entregas.setObjectName("btn_secundario")
+        btn_hist_entregas.setCursor(Qt.CursorShape.PointingHandCursor)
+        if _SVG_OK:
+            btn_hist_entregas.setIcon(QIcon(svg_para_pixmap("fi-sr-time-past.svg", "#94A3B8", 15, 15)))
+            btn_hist_entregas.setIconSize(QSize(15, 15))
+        btn_hist_entregas.clicked.connect(self._abrir_historico_entregas)
+
         header.addLayout(titulos)
         header.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        header.addWidget(btn_hist_entregas)
         header.addWidget(btn_nova_os)
         main_layout.addLayout(header)
 
@@ -437,6 +446,10 @@ class LaboratorioScreen(QWidget):
         self._janela_nova_os = NovaOrdemServicoWindow()
         self._janela_nova_os.accepted.connect(self._carregar_ordens)
         self._janela_nova_os.exec()
+
+    def _abrir_historico_entregas(self):
+        from pages.historicoentrega import HistoricoEntregaDialog
+        HistoricoEntregaDialog(self).exec()
 
     def _imprimir_os(self, ordem: dict):
         try:
@@ -557,6 +570,12 @@ class LaboratorioScreen(QWidget):
             border: none;
         }
         QPushButton#btn_primario:hover { background-color: #E05412; }
+        QPushButton#btn_secundario {
+            background-color: transparent; color: #94A3B8;
+            font-size: 13px; font-weight: 600;
+            border: 1px solid #1E293B; border-radius: 6px; padding: 8px 16px;
+        }
+        QPushButton#btn_secundario:hover { border-color: #64748B; color: #FFFFFF; }
 
         /* Botão 3 pontinhos */
         QPushButton#btn_menu_card {

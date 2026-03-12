@@ -17,15 +17,14 @@ call .\.venv\Scripts\activate.bat
 python -m PyInstaller --version >nul 2>&1
 if errorlevel 1 (
     echo PyInstaller is not installed in the virtual environment.
-    echo Run:
-    echo pip install pyinstaller
+    echo Run:  pip install pyinstaller
     pause
     exit /b 1
 )
 
 echo Cleaning old build folders...
 if exist build rmdir /s /q build
-if exist dist rmdir /s /q dist
+if exist dist  rmdir /s /q dist
 if exist iFix.spec del /f /q iFix.spec
 
 echo Building executable with PyInstaller...
@@ -40,6 +39,8 @@ python -m PyInstaller ^
   --add-data "logo.ico;." ^
   --add-data "logo.png;." ^
   --add-data "data\ifix.db;data" ^
+  --add-data "svg;svg" ^
+  --hidden-import data.database ^
   --hidden-import pages.dashboard ^
   --hidden-import pages.vendas ^
   --hidden-import pages.clientes ^
@@ -47,13 +48,22 @@ python -m PyInstaller ^
   --hidden-import pages.garantia ^
   --hidden-import pages.laboratorio ^
   --hidden-import pages.catalogo ^
+  --hidden-import pages.historicovendas ^
+  --hidden-import pages.historicoentrega ^
   --hidden-import component.sidebar ^
+  --hidden-import component.base_dialog ^
+  --hidden-import component.svg_utils ^
   --hidden-import component.vizualizarcliente ^
-  --hidden-import component.ordemdeservico ^
-  --hidden-import component.novavenda ^
   --hidden-import component.novocliente ^
   --hidden-import component.novotecnico ^
+  --hidden-import component.novoproduto ^
+  --hidden-import component.novocelular ^
+  --hidden-import component.novavenda ^
+  --hidden-import component.novaentrega ^
+  --hidden-import component.novocancelamento ^
+  --hidden-import component.ordemdeservico ^
   --hidden-import component.notas ^
+  --hidden-import component.whatsapp ^
   app.py
 
 if errorlevel 1 (

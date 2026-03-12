@@ -25,7 +25,7 @@ def criar_nota_venda(cliente, produtos, servicos, total, forma_pagamento, parcel
         f.write(f"Garantia: {garantia}\n")
     return caminho_arquivo
 # criar nota de ordem de serviço
-def criar_nota_servico(cliente, servicos, total, forma_pagamento, parcelamento, observacao, garantia):
+def criar_nota_servico(cliente, servicos, total, forma_pagamento, parcelamento, observacao, garantia, senha):
     data_atual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     nome_arquivo = f"nota_{data_atual.replace('/', '_').replace(':', '_')}.txt"
     caminho_arquivo = os.path.join("notas", nome_arquivo)
@@ -38,6 +38,7 @@ def criar_nota_servico(cliente, servicos, total, forma_pagamento, parcelamento, 
         f.write(f"Forma de Pagamento: {forma_pagamento}\n")
         f.write(f"Parcelamento: {parcelamento}\n")
         f.write(f"Observação: {observacao}\n")
+        f.write(f"senha: {senha}\n")
         f.write(f"Garantia: {garantia}\n")
     return caminho_arquivo 
 # criar nota ordem de finalização de serviço 
@@ -227,7 +228,8 @@ def gerar_nota_entrega(dados_entrega: dict, ordem: dict) -> str:
 
 # ── Cupom de Venda PDV ─────────────────────────────────────────────────────
 def imprimir_venda(venda_id: int, itens: list, cliente_nome: str,
-                   forma_pagamento: str, parcelamento: str, total: float) -> str:
+                   forma_pagamento: str, parcelamento: str, total: float,
+                   desconto: float = 0.0) -> str:
     """Gera e imprime o cupom de venda do PDV."""
     pasta = os.path.join(os.path.dirname(__file__), '..', 'notas')
     os.makedirs(pasta, exist_ok=True)
@@ -240,6 +242,18 @@ def imprimir_venda(venda_id: int, itens: list, cliente_nome: str,
 
     def linha(c="-"): return c * L + "\n"
     def centro(txt): return txt.center(L) + "\n"
+    def campo(rotulo, valor): return f"{rotulo:<20}{valor}\n"
+
+    # Calcula subtotal bruto a partir dos itens
+    subtotal = sum(
+        float(i.get("subtotal") or
+              float(i.get("preco") or i.get("preco_unitario") or 0) *
+              int(i.get("qtd") or i.get("quantidade") or 1))
+        for i in itens
+    )
+    # Garante que desconto e total são coerentes
+    desconto = float(desconto or 0)
+    total_liq = float(total)
 
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(linha("="))
@@ -264,10 +278,13 @@ def imprimir_venda(venda_id: int, itens: list, cliente_nome: str,
             f.write(f"  {qtd}x R${preco:.2f}{' ' * max(1, espaco)}R$ {sub:.2f}\n")
         f.write(linha())
 
-        f.write(f"{'TOTAL:':<20}R$ {total:.2f}\n")
-        f.write(f"{'Pagamento:':<20}{forma_pagamento}\n")
+        f.write(campo("Subtotal:", f"R$ {subtotal:.2f}"))
+        if desconto > 0:
+            f.write(campo("Desconto:", f"- R$ {desconto:.2f}"))
+        f.write(campo("TOTAL:", f"R$ {total_liq:.2f}"))
+        f.write(campo("Pagamento:", forma_pagamento))
         if parcelamento and parcelamento != "À vista":
-            f.write(f"{'Parcelamento:':<20}{parcelamento}\n")
+            f.write(campo("Parcelamento:", parcelamento))
         f.write(linha())
         f.write(centro("Obrigado pela preferência!"))
         f.write(centro("iFix — Qualidade e Confiança"))

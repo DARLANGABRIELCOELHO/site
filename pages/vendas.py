@@ -203,8 +203,17 @@ class VendasScreen(QWidget):
         self.btn_finalizar_topo.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_finalizar_topo.clicked.connect(self._finalizar_venda)
 
+        btn_hist_vendas = QPushButton("Histórico")
+        btn_hist_vendas.setObjectName("btn_secundario")
+        btn_hist_vendas.setCursor(Qt.CursorShape.PointingHandCursor)
+        if _SVG_OK:
+            btn_hist_vendas.setIcon(QIcon(svg_para_pixmap("fi-sr-time-past.svg", "#94A3B8", 15, 15)))
+            btn_hist_vendas.setIconSize(QSize(15, 15))
+        btn_hist_vendas.clicked.connect(self._abrir_historico_vendas)
+
         header.addLayout(titulos)
         header.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        header.addWidget(btn_hist_vendas)
         header.addWidget(self.btn_finalizar_topo)
         left_layout.addLayout(header)
 
@@ -474,6 +483,7 @@ class VendasScreen(QWidget):
                 forma_pagamento=forma_pagamento,
                 parcelamento=parcelamento,
                 total=total_liq,
+                desconto=desconto,
             )
         except Exception as e:
             QMessageBox.warning(dlg, "Aviso", f"Venda registrada, mas falha ao imprimir:\n{e}")
@@ -491,6 +501,12 @@ class VendasScreen(QWidget):
         self.edit_busca.clear()
         self._render_carrinho()
         self._carregar_produtos()
+
+    # ── Histórico ────────────────────────────────
+
+    def _abrir_historico_vendas(self):
+        from pages.historicovendas import HistoricoVendasDialog
+        HistoricoVendasDialog(self).exec()
 
     # ── Estilos ─────────────────────────────────
 
@@ -515,6 +531,12 @@ class VendasScreen(QWidget):
             border-radius: 6px; padding: 10px 20px; border: none;
         }
         QPushButton#btn_primario:hover { background-color: #E05412; }
+        QPushButton#btn_secundario {
+            background-color: transparent; color: #94A3B8;
+            font-size: 13px; font-weight: 600;
+            border: 1px solid #1E293B; border-radius: 6px; padding: 8px 16px;
+        }
+        QPushButton#btn_secundario:hover { border-color: #64748B; color: #FFFFFF; }
         QScrollArea#scroll_area { border: none; background-color: transparent; }
         QWidget#scroll_content  { background-color: transparent; }
         QScrollBar:vertical { border: none; background-color: #0B1120; width: 8px; border-radius: 4px; }

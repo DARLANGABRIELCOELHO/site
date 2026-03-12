@@ -21,6 +21,15 @@ def get_writable_db_path():
     return app_dir / "ifix.db"
 
 def prepare_database():
+    # Em modo desenvolvimento (rodando app.py diretamente), usa data/ifix.db sem copiar
+    if not hasattr(sys, '_MEIPASS'):
+        dev_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "data", "ifix.db"
+        )
+        return dev_path
+
+    # Em modo compilado (.exe), copia para pasta gravável do usuário
     destino = get_writable_db_path()
     if not destino.exists():
         origem = resource_path(os.path.join("data", "ifix.db"))
@@ -2005,3 +2014,109 @@ def excluir_ordem_cancelamento(ordem_cancelamento_id):
         cursor.execute("DELETE FROM ordem_cancelamento WHERE id = ?", (ordem_cancelamento_id,))
         conn.commit()
         return cursor.rowcount > 0
+
+
+# =====================================================================
+# HISTÓRICO DE VENDAS
+# =====================================================================
+
+def listar_vendas(filtro: str = "") -> list:
+    """
+    Retorna todas as vendas com JOIN em clientes.
+    filtro: busca pelo nome do cliente, forma de pagamento ou ID da venda.
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        params = []
+        where = "WHERE 1=1"
+
+        if filtro:
+            like = f"%{filtro}%"
+            where += (
+                " AND (c.nome LIKE ? OR v.forma_pagamento LIKE ?"
+                " OR CAST(v.id AS TEXT) LIKE ?)"
+            )
+            params.extend([like, like, like])
+
+        cursor.execute(f"""
+            SELECT
+                v.id,
+                v.data_venda,
+                v.forma_pagamento,
+                v.parcelamento,
+                v.desconto,
+                v.valor_total,
+                v.observacao,
+                v.garantia,
+                v.cliente_id,
+                c.nome AS cliente_nome,
+                c.telefone AS cliente_telefone
+            FROM vendas v
+            LEFT JOIN clientes c ON c.id = v.cliente_id
+            {where}
+            ORDER BY v.data_venda DESC, v.id DESC
+        """, params)
+        vendas = [dict(row) for row in cursor.fetchall()]
+
+        for venda in vendas:
+            cursor.execute("""
+                SELECT nome_snapshot AS nome, quantidade AS qtd,
+                       preco_unitario AS preco, subtotal
+                FROM venda_itens WHERE venda_id = ? ORDER BY id
+            """, (venda["id"],))
+            venda["itens"] = [dict(r) for r in cursor.fetchall()]
+
+        return vendas
+
+
+# =====================================================================
+# HISTÓRICO DE ENTREGAS
+# =====================================================================
+
+def listar_entregas(filtro: str = "") -> list:
+    """
+    Retorna todas as ordens de entrega com JOIN em clientes, técnicos e OS.
+    filtro: busca pelo nome do cliente, técnico, modelo do aparelho ou ID.
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        params = []
+        where = "WHERE 1=1"
+
+        if filtro:
+            like = f"%{filtro}%"
+            where += (
+                " AND (c.nome LIKE ? OR t.nome LIKE ?"
+                " OR os.modelo LIKE ? OR CAST(oe.id AS TEXT) LIKE ?)"
+            )
+            params.extend([like, like, like, like])
+
+        cursor.execute(f"""
+            SELECT
+                oe.id,
+                oe.data,
+                oe.condicao,
+                oe.laudo,
+                oe.observacoes,
+                oe.forma_pagamento,
+                oe.parcelamento,
+                oe.desconto,
+                oe.valor_total,
+                oe.garantia,
+                oe.data_fim_garantia,
+                oe.ordem_servico_id,
+                os.modelo,
+                os.cor,
+                oe.cliente_id,
+                c.nome     AS cliente_nome,
+                c.telefone AS cliente_telefone,
+                oe.tecnico_id,
+                t.nome     AS tecnico_nome
+            FROM ordem_entrega oe
+            LEFT JOIN ordem_servico os ON os.id = oe.ordem_servico_id
+            LEFT JOIN clientes c ON c.id = oe.cliente_id
+            LEFT JOIN tecnicos t ON t.id = oe.tecnico_id
+            {where}
+            ORDER BY oe.data DESC, oe.id DESC
+        """, params)
+        return [dict(row) for row in cursor.fetchall()]

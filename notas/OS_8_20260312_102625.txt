@@ -1,0 +1,21 @@
+==========================================
+         ORDEM DE SERVIÇO
+==========================================
+OS#:        8
+Data:       12/03/2026 10:26:25
+Cliente:    GUSTAVO
+Telefone:   15 981176432
+Aparelho:   IPHONE 11
+IMEI:       —
+Técnico:    FELIPE
+Status:     pronto
+Prioridade: normal
+------------------------------------------
+DEFEITO RELATADO:
+CELULAR NÃO CARREGA
+------------------------------------------
+SERVIÇOS:
+  - IPHONE 11 LIMPEZA: R$ 80.00
+------------------------------------------
+TOTAL: R$ 80.00
+==========================================

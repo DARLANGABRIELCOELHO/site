@@ -425,6 +425,9 @@ class DashboardScreen(QWidget):
         self._content_layout.addWidget(_separator())
 
         self._tec_container = QWidget()
+        self._tec_container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
         self._tec_grid = QGridLayout(self._tec_container)
         self._tec_grid.setSpacing(16)
         self._tec_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
@@ -502,27 +505,34 @@ class DashboardScreen(QWidget):
         while self._tec_grid.count():
             item = self._tec_grid.takeAt(0)
             if item.widget():
-                item.widget().deleteLater()
+                item.widget().setParent(None)
         try:
             tecnicos = db.calcular_kpis_tecnicos(di)
             if not tecnicos:
-                lbl = QLabel("Nenhum técnico com dados no período.")
+                lbl = QLabel("Nenhum técnico cadastrado.")
                 lbl.setObjectName("subtitle")
                 self._tec_grid.addWidget(lbl, 0, 0)
-                return
-            row, col = 0, 0
-            for t in tecnicos:
-                card = TecnicoCard(
-                    t["nome"], t["faturamento"], t["gastos"],
-                    t["lucro"], t["lucro_liquido"], t["ticket_medio"]
-                )
-                self._tec_grid.addWidget(card, row, col)
-                col += 1
-                if col >= 4:
-                    col = 0
-                    row += 1
+            else:
+                row, col = 0, 0
+                for t in tecnicos:
+                    card = TecnicoCard(
+                        t["nome"], t["faturamento"], t["gastos"],
+                        t["lucro"], t["lucro_liquido"], t["ticket_medio"]
+                    )
+                    self._tec_grid.addWidget(card, row, col)
+                    col += 1
+                    if col >= 4:
+                        col = 0
+                        row += 1
         except Exception as e:
-            print(f"[Dashboard] _atualizar_tecnicos: {e}")
+            import traceback
+            traceback.print_exc()
+            lbl = QLabel(f"Erro ao carregar técnicos: {e}")
+            lbl.setObjectName("subtitle")
+            self._tec_grid.addWidget(lbl, 0, 0)
+        finally:
+            self._tec_container.adjustSize()
+            self._tec_container.updateGeometry()
 
     def _mudar_periodo(self, index: int):
         self._periodo_ativo = list(PERIODOS.keys())[index]
