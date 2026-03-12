@@ -36,11 +36,15 @@ python -m PyInstaller ^
   --onedir ^
   --name iFix ^
   --icon=logo.ico ^
+  --paths=. ^
   --add-data "logo.ico;." ^
   --add-data "logo.png;." ^
   --add-data "data\ifix.db;data" ^
   --add-data "svg;svg" ^
+<<<<<<< HEAD
   --hidden-import data.database ^
+=======
+>>>>>>> b6f2f56ac648032dd220690badbd92cfa8b1673a
   --hidden-import pages.dashboard ^
   --hidden-import pages.vendas ^
   --hidden-import pages.clientes ^
