@@ -4,7 +4,11 @@
       "Bash(.venv/Scripts/pip install:*)",
       "Bash(find /c/Users/darla/OneDrive/Documentos/GitHub/site -path */.venv -prune -o -type f -name *.svg -print)",
       "Bash(grep -r svg_para_pixmap /c/Users/darla/OneDrive/Documentos/GitHub/site --include=*.py --exclude-dir=.venv)",
-      "Bash(grep -r fi-sr- /c/Users/darla/OneDrive/Documentos/GitHub/site --include=*.py --exclude-dir=.venv)"
+      "Bash(grep -r fi-sr- /c/Users/darla/OneDrive/Documentos/GitHub/site --include=*.py --exclude-dir=.venv)",
+      "Bash(python -c \"import pages.despesas; print\\(''OK''\\)\")",
+      "Bash(python -c \"import data.database as db; db.inicializar_estado\\(\\); print\\(''DB OK''\\)\")",
+      "Bash(python app.py)",
+      "Bash(python -c \":*)"
     ]
   }
 }

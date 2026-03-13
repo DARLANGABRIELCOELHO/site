@@ -41,10 +41,7 @@ python -m PyInstaller ^
   --add-data "logo.png;." ^
   --add-data "data\ifix.db;data" ^
   --add-data "svg;svg" ^
-<<<<<<< HEAD
   --hidden-import data.database ^
-=======
->>>>>>> b6f2f56ac648032dd220690badbd92cfa8b1673a
   --hidden-import pages.dashboard ^
   --hidden-import pages.vendas ^
   --hidden-import pages.clientes ^
@@ -52,6 +49,7 @@ python -m PyInstaller ^
   --hidden-import pages.garantia ^
   --hidden-import pages.laboratorio ^
   --hidden-import pages.catalogo ^
+  --hidden-import pages.despesas ^
   --hidden-import pages.historicovendas ^
   --hidden-import pages.historicoentrega ^
   --hidden-import component.sidebar ^
@@ -65,6 +63,7 @@ python -m PyInstaller ^
   --hidden-import component.novavenda ^
   --hidden-import component.novaentrega ^
   --hidden-import component.novocancelamento ^
+  --hidden-import component.novadespesa ^
   --hidden-import component.ordemdeservico ^
   --hidden-import component.notas ^
   --hidden-import component.whatsapp ^

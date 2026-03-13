@@ -32,6 +32,7 @@ class SidebarMenu(QWidget):
         ("fi-sr-shield-check.svg",       " Garantias & RMA"),
         ("fi-sr-catalog.svg",            " Catálogo"),
         ("fi-sr-user-helmet-safety.svg", " Técnicos"),
+        ("fi-sr-calculator.svg",         " Despesas"),
     ]
 
     def __init__(self, stacked_widget=None, parent=None):

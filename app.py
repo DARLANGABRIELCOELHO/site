@@ -30,6 +30,7 @@ from pages.garantia import GarantiasRMAScreen
 from pages.tecnicos import TecnicosScreen
 from pages.dashboard import DashboardScreen
 from pages.catalogo import CatalogoScreen
+from pages.despesas import DespesasScreen
 
 
 class PlaceholderScreen(QWidget):
@@ -68,6 +69,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(GarantiasRMAScreen())                 # 4
         self.stack.addWidget(CatalogoScreen())                     # 5
         self.stack.addWidget(TecnicosScreen())                     # 6
+        self.stack.addWidget(DespesasScreen())                     # 7
 
         # --- Sidebar ---
         self.sidebar = SidebarMenu(stacked_widget=self.stack)

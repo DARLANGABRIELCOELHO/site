@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iFix Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
+
+    :root {
+      --bg-window: #0F172A;
+      --bg-panel: #0B1120;
+      --accent: #F26522;
+      --accent-soft: rgba(242, 101, 34, 0.15);
+      --text-primary: #FFFFFF;
+      --text-muted: #64748B;
+      --line: rgba(255, 255, 255, 0.08);
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --radius: 22px;
+      --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-window);
+      color: var(--text-primary);
+      font-family: 'Montserrat', 'Inter', 'Segoe UI', Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    body {
+      padding: 22px;
+    }
+
+    .dashboard {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    h1, h2, h3, .panel-title, .control-title, .card .value, .name {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .label, .section-label, .mini .label, .card .label, .metric-row span:first-child {
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .filter-btn, .pill, .tech-tag, .low-badge {
+      font-weight: 600;
+    }
+
+    .hero {
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-primary);
+    }
+
+    .brand-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 20px rgba(242, 101, 34, 0.75);
+    }
+
+    .hero h1 {
+      margin: 10px 0 8px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.05;
+      font-weight: 800;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--text-muted);
+      max-width: 780px;
+      line-height: 1.6;
+    }
+
+    .hero-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
+      gap: 12px;
+      width: min(480px, 100%);
+    }
+
+    .mini {
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+    }
+
+    .mini .value {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(242, 101, 34, 0.3);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .cards {
+      display: grid;
+      gap: 14px;
+    }
+
+    .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+    .card {
+      background: var(--bg-window);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card .value {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .card .hint {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .accent-bar {
+      width: 64px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      opacity: 0.8;
+    }
+
+    .filter-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: var(--bg-window);
+      color: var(--text-primary);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s ease;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .control-card {
+      background: var(--bg-window);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      min-height: 240px;
+    }
+
+    .control-title {
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-primary);
+    }
+
+    .name {
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.2;
+      color: var(--accent);
+    }
+
+    .metric-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .low-stock-list {
+      display: grid;
+      gap: 10px;
+      max-height: 280px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .low-item {
+      padding: 12px;
+      border-radius: 16px;
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 4px;
+    }
+
+    .low-item .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .low-badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(239, 68, 68, 0.15);
+      color: #fecaca;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      white-space: nowrap;
+    }
+
+    .low-item .sub {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .tech-card {
+      background: var(--bg-window);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .tech-name {
+      font-size: 18px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-primary);
+      text-transform: uppercase;
+    }
+
+    .tech-tag {
+      font-size: 12px;
+      color: #fff;
+      background: var(--accent-soft);
+      border: 1px solid rgba(242, 101, 34, 0.3);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .tech-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .tech-stat {
+      padding: 12px;
+      border-radius: 16px;
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+    }
+
+    .tech-stat .n {
+      margin-top: 6px;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--text-primary);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-panel);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 10px;
+    }
+
+    @media (max-width: 1300px) {
+      .cols-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 980px) {
+      .cols-4, .cols-3, .cols-5, .control-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      body { padding: 14px; }
+      .cols-4, .cols-3, .cols-5, .control-grid, .hero-meta, .tech-stats { grid-template-columns: 1fr; }
+      .hero { border-radius: 24px; }
+      .panel, .card, .control-card, .tech-card { border-radius: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+
+    <section class="hero">
+      <div>
+        <div class="brand"><span class="brand-dot"></span> iFix Dashboard</div>
+        <h1>Dashboard operacional</h1>
+        <p>
+          Estrutura organizada por grids: assistência, estoque, filtro financeiro, controle, comercial e técnicos.
+          Baseado no banco <strong>ifix.db</strong>.
+        </p>
+      </div>
+
+      <div class="hero-meta">
+        <div class="mini">
+          <div class="label">Faturamento total</div>
+          <div class="value" id="heroFaturamento">R$ 0,00</div>
+        </div>
+        <div class="mini">
+          <div class="label">OS ativas</div>
+          <div class="value" id="heroOs">0</div>
+        </div>
+        <div class="mini">
+          <div class="label">ROI sobre estoque</div>
+          <div class="value" id="heroRoi">0%</div>
+        </div>
+        <div class="mini">
+          <div class="label">Estoque baixo</div>
+          <div class="value" id="heroLowStock">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRID 1 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="section-label">Grid 1</div>
+          <div class="panel-title">Assistência</div>
+        </div>
+        <div class="pill">Operação técnica</div>
+      </div>
+
+      <div class="cards cols-5">
+        <div class="card">
+          <div class="label">Ordem de serviço</div>
+          <div class="value" id="g1_os_total">0</div>
+          <div class="hint">Total de OS cadastradas</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">OS entregues</div>
+          <div class="value" id="g1_os_entregues">0</div>
+          <div class="hint">Ordens concluídas com entrega</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">OS pendentes</div>
+          <div class="value" id="g1_os_pendentes">0</div>
+          <div class="hint">OS ainda não entregues</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Taxa de cancelamento</div>
+          <div class="value" id="g1_taxa_cancel">0%</div>
+          <div class="hint">Canceladas ÷ total de OS</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Taxa de garantia</div>
+          <div class="value" id="g1_taxa_garantia">0%</div>
+          <div class="hint">Entregas com garantia registrada</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Taxa de aprovação</div>
+          <div class="value" id="g1_taxa_aprovacao">0%</div>
+          <div class="hint">OS aprovadas ÷ OS orçadas</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">OS em atraso</div>
+          <div class="value" id="g1_os_atrasadas">0</div>
+          <div class="hint">Ordens fora do prazo prometido</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Tempo médio reparo</div>
+          <div class="value" id="g1_tempo_medio">0d</div>
+          <div class="hint">Recebimento até entrega</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Taxa de retrabalho</div>
+          <div class="value" id="g1_taxa_retrabalho">0%</div>
+          <div class="hint">Retornos pelo mesmo defeito</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Backlog atual</div>
+          <div class="value" id="g1_backlog">0</div>
+          <div class="hint">Aparelhos em aberto na bancada</div>
+          <div class="accent-bar"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRID 2 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="section-label">Grid 2</div>
+          <div class="panel-title">Vendas / Estoque</div>
+        </div>
+        <div class="pill">Capital e potencial</div>
+      </div>
+
+      <div class="cards cols-3">
+        <div class="card">
+          <div class="label">Custo estoque</div>
+          <div class="value" id="g2_custo_estoque">R$ 0,00</div>
+          <div class="hint">Capital investido no estoque</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Potencial estoque</div>
+          <div class="value" id="g2_potencial_estoque">R$ 0,00</div>
+          <div class="hint">Receita bruta potencial de venda</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">ROI s/ estoque</div>
+          <div class="value" id="g2_roi_estoque">0%</div>
+          <div class="hint">(Potencial - Custo) ÷ Custo</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Giro de estoque</div>
+          <div class="value" id="g2_giro_estoque">0x</div>
+          <div class="hint">Velocidade de saída do estoque</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Dias médios em estoque</div>
+          <div class="value" id="g2_dias_estoque">0d</div>
+          <div class="hint">Tempo médio dos itens parados</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Itens sem giro</div>
+          <div class="value" id="g2_itens_sem_giro">0</div>
+          <div class="hint">Itens parados sem venda</div>
+          <div class="accent-bar"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRID 3 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="section-label">Grid 3</div>
+          <div class="panel-title">Filtro financeiro</div>
+        </div>
+
+        <div class="filter-wrap">
+          <button class="filter-btn active" data-filter="ambos">Vendas e serviços</button>
+          <button class="filter-btn" data-filter="vendas">Vendas</button>
+          <button class="filter-btn" data-filter="servicos">Serviços</button>
+        </div>
+      </div>
+
+      <div class="cards cols-5">
+        <div class="card">
+          <div class="label">Faturamento</div>
+          <div class="value" id="g3_faturamento">R$ 0,00</div>
+          <div class="hint">Receita do filtro selecionado</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Lucro líquido</div>
+          <div class="value" id="g3_lucro">R$ 0,00</div>
+          <div class="hint">Faturamento - gastos</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Gastos</div>
+          <div class="value" id="g3_gastos">R$ 0,00</div>
+          <div class="hint">Custos mapeados no banco</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Ticket médio</div>
+          <div class="value" id="g3_ticket">R$ 0,00</div>
+          <div class="hint">Receita média por operação</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Margem líquida</div>
+          <div class="value" id="g3_margem">0%</div>
+          <div class="hint">Lucro líquido ÷ faturamento</div>
+          <div class="accent-bar"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRID 4 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="section-label">Grid 4</div>
+          <div class="panel-title">Controle</div>
+        </div>
+        <div class="pill">Leitura gerencial</div>
+      </div>
+
+      <div class="control-grid">
+        <div class="control-card">
+          <div>
+            <div class="section-label">Item mais vendido</div>
+            <div class="control-title">Produto líder</div>
+          </div>
+
+          <div class="name" id="c_item_nome">—</div>
+
+          <div class="metric-list">
+            <div class="metric-row">
+              <span>Quantidade vendida</span>
+              <strong id="c_item_qtd">0</strong>
+            </div>
+            <div class="metric-row">
+              <span>Faturamento gerado</span>
+              <strong id="c_item_fat">R$ 0,00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div>
+            <div class="section-label">Serviço mais prestado</div>
+            <div class="control-title">Serviço líder</div>
+          </div>
+
+          <div class="name" id="c_serv_nome">—</div>
+
+          <div class="metric-list">
+            <div class="metric-row">
+              <span>Quantidade</span>
+              <strong id="c_serv_qtd">0</strong>
+            </div>
+            <div class="metric-row">
+              <span>Faturamento associado</span>
+              <strong id="c_serv_fat">R$ 0,00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div>
+            <div class="section-label">Melhor cliente</div>
+            <div class="control-title">Maior retorno financeiro</div>
+          </div>
+
+          <div class="name" id="c_cliente_nome">—</div>
+
+          <div class="metric-list">
+            <div class="metric-row">
+              <span>Retorno total</span>
+              <strong id="c_cliente_total">R$ 0,00</strong>
+            </div>
+            <div class="metric-row">
+              <span>Total em vendas</span>
+              <strong id="c_cliente_vendas">R$ 0,00</strong>
+            </div>
+            <div class="metric-row">
+              <span>Total em serviços</span>
+              <strong id="c_cliente_servicos">R$ 0,00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div>
+            <div class="section-label">Estoque baixo</div>
+            <div class="control-title"><span id="c_low_total">0</span> itens em alerta</div>
+          </div>
+
+          <div class="low-stock-list" id="lowStockList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRID 5 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="section-label">Grid 5</div>
+          <div class="panel-title">Técnicos</div>
+        </div>
+        <div class="pill">Desempenho por técnico</div>
+      </div>
+
+      <div class="tech-grid" id="techGrid"></div>
+    </section>
+
+    <!-- GRID 6 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="section-label">Grid 6</div>
+          <div class="panel-title">Comercial / Clientes</div>
+        </div>
+        <div class="pill">Retenção e conversão</div>
+      </div>
+
+      <div class="cards cols-4">
+        <div class="card">
+          <div class="label">Clientes novos</div>
+          <div class="value" id="g6_clientes_novos">0</div>
+          <div class="hint">Primeira compra ou primeiro serviço</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Clientes recorrentes</div>
+          <div class="value" id="g6_clientes_recorrentes">0</div>
+          <div class="hint">Clientes com retorno registrado</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Taxa de recompra</div>
+          <div class="value" id="g6_taxa_recompra">0%</div>
+          <div class="hint">Recorrentes ÷ base de clientes</div>
+          <div class="accent-bar"></div>
+        </div>
+
+        <div class="card">
+          <div class="label">Conversão atendimento</div>
+          <div class="value" id="g6_conversao">0%</div>
+          <div class="hint">Atendimentos convertidos em venda/OS</div>
+          <div class="accent-bar"></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const DATA = {
+      assistencia: {
+        ordens_de_servico: 4,
+        os_entregues: 1,
+        os_pendentes: 3,
+        taxa_cancelamento: 0.0,
+        taxa_garantia: 100.0,
+        taxa_aprovacao: 75.0,
+        os_atrasadas: 1,
+        tempo_medio_reparo_dias: 2.8,
+        taxa_retrabalho: 0.0,
+        backlog_atual: 3
+      },
+
+      vendas_estoque: {
+        custo_estoque: 4116.0,
+        potencial_estoque: 17255.0,
+        roi_estoque: 319.21768707482994,
+        giro_estoque: 2.4,
+        dias_medios_estoque: 34,
+        itens_sem_giro: 5
+      },
+
+      financeiro: {
+        vendas: {
+          faturamento: 900.0,
+          gastos: 200.0,
+          lucro_liquido: 700.0,
+          ticket_medio: 180.0,
+          margem_liquida: 77.7777777778
+        },
+        servicos: {
+          faturamento: 250.0,
+          gastos: 0.0,
+          lucro_liquido: 250.0,
+          ticket_medio: 250.0,
+          margem_liquida: 100.0
+        },
+        ambos: {
+          faturamento: 1150.0,
+          gastos: 200.0,
+          lucro_liquido: 950.0,
+          ticket_medio: 191.66666666666666,
+          margem_liquida: 82.6086956522
+        }
+      },
+
+      controle: {
+        item_mais_vendido: {
+          nome: "Produto A",
+          qtd: 4,
+          faturamento: 400.0
+        },
+        servico_mais_prestado: {
+          nome: "IPHONE 12 TROCA DE TELA",
+          qtd: 1,
+          faturamento: 900.0
+        },
+        melhor_cliente: {
+          id: 1,
+          nome: "Cliente A",
+          total_retorno: 800.0,
+          total_vendas: 800.0,
+          total_servicos: 0
+        },
+        estoque_baixo_total: 8,
+        estoque_baixo_lista: [
+          { nome: "A03S", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 },
+          { nome: "A04", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 },
+          { nome: "A16", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 },
+          { nome: "A21S", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 },
+          { nome: "A33", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 },
+          { nome: "A35", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 },
+          { nome: "A53", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 },
+          { nome: "A55", categoria: "CAPINHA", estoque: 1, estoque_minimo: 1, preco: 20.0 }
+        ]
+      },
+
+      comercial: {
+        clientes_novos: 12,
+        clientes_recorrentes: 7,
+        taxa_recompra: 36.8,
+        conversao_atendimento: 58.3
+      },
+
+      tecnicos: [
+        {
+          tecnico: "FELIPE",
+          ordens: 3,
+          faturamento: 1670.0,
+          gastos: 0.0,
+          lucro_de_cada_tecnico: 1670.0,
+          ticket_medio: 556.6666666666666,
+          lucro_liquido: 1670.0,
+          produtividade_media: 1.5
+        },
+        {
+          tecnico: "Sem técnico",
+          ordens: 1,
+          faturamento: 250.0,
+          gastos: 0.0,
+          lucro_de_cada_tecnico: 250.0,
+          ticket_medio: 250.0,
+          lucro_liquido: 250.0,
+          produtividade_media: 1.0
+        }
+      ]
+    };
+
+    const brl = v => new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(Number(v || 0));
+
+    const num = v => new Intl.NumberFormat('pt-BR').format(Number(v || 0));
+
+    const pct = v => `${Number(v || 0).toFixed(1).replace('.', ',')}%`;
+
+    const day = v => `${Number(v || 0).toFixed(1).replace('.', ',')}d`;
+
+    const turn = v => `${Number(v || 0).toFixed(1).replace('.', ',')}x`;
+
+    function setText(id, value){
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function escapeHtml(value){
+      return String(value ?? '').replace(/[&<>"']/g, m => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#39;'
+      }[m]));
+    }
+
+    function renderGrid1(){
+      const a = DATA.assistencia;
+      setText('g1_os_total', num(a.ordens_de_servico));
+      setText('g1_os_entregues', num(a.os_entregues));
+      setText('g1_os_pendentes', num(a.os_pendentes));
+      setText('g1_taxa_cancel', pct(a.taxa_cancelamento));
+      setText('g1_taxa_garantia', pct(a.taxa_garantia));
+      setText('g1_taxa_aprovacao', pct(a.taxa_aprovacao));
+      setText('g1_os_atrasadas', num(a.os_atrasadas));
+      setText('g1_tempo_medio', day(a.tempo_medio_reparo_dias));
+      setText('g1_taxa_retrabalho', pct(a.taxa_retrabalho));
+      setText('g1_backlog', num(a.backlog_atual));
+    }
+
+    function renderGrid2(){
+      const v = DATA.vendas_estoque;
+      setText('g2_custo_estoque', brl(v.custo_estoque));
+      setText('g2_potencial_estoque', brl(v.potencial_estoque));
+      setText('g2_roi_estoque', pct(v.roi_estoque));
+      setText('g2_giro_estoque', turn(v.giro_estoque));
+      setText('g2_dias_estoque', `${num(v.dias_medios_estoque)}d`);
+      setText('g2_itens_sem_giro', num(v.itens_sem_giro));
+    }
+
+    function renderHero(){
+      setText('heroFaturamento', brl(DATA.financeiro.ambos.faturamento));
+      setText('heroOs', num(DATA.assistencia.ordens_de_servico));
+      setText('heroRoi', pct(DATA.vendas_estoque.roi_estoque));
+      setText('heroLowStock', num(DATA.controle.estoque_baixo_total));
+    }
+
+    function renderFinanceiro(filterKey){
+      const data = DATA.financeiro[filterKey];
+      setText('g3_faturamento', brl(data.faturamento));
+      setText('g3_lucro', brl(data.lucro_liquido));
+      setText('g3_gastos', brl(data.gastos));
+      setText('g3_ticket', brl(data.ticket_medio));
+      setText('g3_margem', pct(data.margem_liquida));
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filterKey);
+      });
+    }
+
+    function renderControle(){
+      const c = DATA.controle;
+
+      setText('c_item_nome', c.item_mais_vendido.nome);
+      setText('c_item_qtd', num(c.item_mais_vendido.qtd));
+      setText('c_item_fat', brl(c.item_mais_vendido.faturamento));
+
+      setText('c_serv_nome', c.servico_mais_prestado.nome);
+      setText('c_serv_qtd', num(c.servico_mais_prestado.qtd));
+      setText('c_serv_fat', brl(c.servico_mais_prestado.faturamento));
+
+      setText('c_cliente_nome', c.melhor_cliente.nome);
+      setText('c_cliente_total', brl(c.melhor_cliente.total_retorno));
+      setText('c_cliente_vendas', brl(c.melhor_cliente.total_vendas));
+      setText('c_cliente_servicos', brl(c.melhor_cliente.total_servicos));
+
+      setText('c_low_total', num(c.estoque_baixo_total));
+
+      document.getElementById('lowStockList').innerHTML = c.estoque_baixo_lista.map(item => `
+        <div class="low-item">
+          <div class="top">
+            <strong>${escapeHtml(item.nome)}</strong>
+            <span class="low-badge">${num(item.estoque)} un.</span>
+          </div>
+          <div class="sub">${escapeHtml(item.categoria)} · mínimo ${num(item.estoque_minimo)} · preço ${brl(item.preco)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderTecnicos(){
+      const wrap = document.getElementById('techGrid');
+      wrap.innerHTML = DATA.tecnicos.map(t => `
+        <div class="tech-card">
+          <div class="tech-name">
+            <span>${escapeHtml(t.tecnico)}</span>
+            <span class="tech-tag">${num(t.ordens)} OS</span>
+          </div>
+
+          <div class="tech-stats">
+            <div class="tech-stat">
+              <div class="label">Faturamento de cada técnico</div>
+              <div class="n">${brl(t.faturamento)}</div>
+            </div>
+            <div class="tech-stat">
+              <div class="label">Gasto de cada técnico</div>
+              <div class="n">${brl(t.gastos)}</div>
+            </div>
+            <div class="tech-stat">
+              <div class="label">Lucro de cada técnico</div>
+              <div class="n">${brl(t.lucro_de_cada_tecnico)}</div>
+            </div>
+            <div class="tech-stat">
+              <div class="label">Ticket médio</div>
+              <div class="n">${brl(t.ticket_medio)}</div>
+            </div>
+            <div class="tech-stat">
+              <div class="label">Produtividade média</div>
+              <div class="n">${day(t.produtividade_media)}</div>
+            </div>
+            <div class="tech-stat">
+              <div class="label">Lucro líquido</div>
+              <div class="n">${brl(t.lucro_liquido)}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderComercial(){
+      const c = DATA.comercial;
+      setText('g6_clientes_novos', num(c.clientes_novos));
+      setText('g6_clientes_recorrentes', num(c.clientes_recorrentes));
+      setText('g6_taxa_recompra', pct(c.taxa_recompra));
+      setText('g6_conversao', pct(c.conversao_atendimento));
+    }
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => renderFinanceiro(btn.dataset.filter));
+    });
+
+    renderHero();
+    renderGrid1();
+    renderGrid2();
+    renderFinanceiro('ambos');
+    renderControle();
+    renderTecnicos();
+    renderComercial();
+  </script>
+</body>
+</html>

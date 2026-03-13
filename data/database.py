@@ -58,6 +58,7 @@ def inicializar_estado():
     inicializar_banco_ordem_servico_servicos()
     inicializar_banco_ordem_entrega()
     inicializar_banco_ordem_cancelamento()
+    inicializar_banco_despesas()
 
 # ======================================================================
 # CLIENTES
@@ -2120,3 +2121,114 @@ def listar_entregas(filtro: str = "") -> list:
             ORDER BY oe.data DESC, oe.id DESC
         """, params)
         return [dict(row) for row in cursor.fetchall()]
+
+# ======================================================================
+# DESPESAS
+# ======================================================================
+CATEGORIAS_DESPESA = [
+    "Aluguel", "Energia", "Água", "Internet", "Telefone",
+    "Fornecedor", "Salário", "Material", "Marketing", "Outros"
+]
+
+def inicializar_banco_despesas():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS despesas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                descricao TEXT NOT NULL,
+                valor REAL NOT NULL,
+                categoria TEXT NOT NULL DEFAULT 'Outros',
+                data TEXT NOT NULL,
+                forma_pagamento TEXT DEFAULT 'Dinheiro',
+                observacoes TEXT,
+                recorrente INTEGER DEFAULT 0,
+                recorrencia TEXT DEFAULT ''
+            )
+        """)
+        # Migração: adiciona coluna recorrencia se a tabela já existia sem ela
+        try:
+            cursor.execute("ALTER TABLE despesas ADD COLUMN recorrencia TEXT DEFAULT ''")
+        except Exception:
+            pass  # coluna já existe
+        conn.commit()
+
+
+def registrar_despesa(descricao, valor, categoria, data, forma_pagamento="Dinheiro", observacoes="", recorrente=False, recorrencia=""):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO despesas (descricao, valor, categoria, data, forma_pagamento, observacoes, recorrente, recorrencia)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (descricao, float(valor), categoria, data, forma_pagamento, observacoes, int(bool(recorrente)), recorrencia))
+        conn.commit()
+        return cursor.lastrowid
+
+
+def listar_despesas(mes=None, ano=None, categoria=None):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        conditions = []
+        params = []
+        if mes and ano:
+            conditions.append("strftime('%m', data) = ? AND strftime('%Y', data) = ?")
+            params.extend([f"{int(mes):02d}", str(ano)])
+        elif ano:
+            conditions.append("strftime('%Y', data) = ?")
+            params.append(str(ano))
+        if categoria:
+            conditions.append("categoria = ?")
+            params.append(categoria)
+        where = "WHERE " + " AND ".join(conditions) if conditions else ""
+        cursor.execute(f"SELECT * FROM despesas {where} ORDER BY data DESC, id DESC", params)
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def listar_despesas_por_dia(data):
+    """Retorna despesas de um dia específico. data no formato 'YYYY-MM-DD'."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM despesas WHERE data = ? ORDER BY id DESC", (data,))
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def excluir_despesa(despesa_id):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM despesas WHERE id = ?", (despesa_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def total_despesas_mes(mes, ano):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT COALESCE(SUM(valor), 0) FROM despesas WHERE strftime('%m', data) = ? AND strftime('%Y', data) = ?",
+            (f"{int(mes):02d}", str(ano))
+        )
+        return cursor.fetchone()[0]
+
+
+def total_despesas_por_categoria_mes(mes, ano):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT categoria, COALESCE(SUM(valor), 0) as total FROM despesas "
+            "WHERE strftime('%m', data) = ? AND strftime('%Y', data) = ? "
+            "GROUP BY categoria ORDER BY total DESC",
+            (f"{int(mes):02d}", str(ano))
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def dias_com_despesa_no_mes(mes, ano):
+    """Retorna lista de dias (int) que têm pelo menos uma despesa no mês."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT CAST(strftime('%d', data) AS INTEGER) as dia FROM despesas "
+            "WHERE strftime('%m', data) = ? AND strftime('%Y', data) = ?",
+            (f"{int(mes):02d}", str(ano))
+        )
+        return [row["dia"] for row in cursor.fetchall()]
